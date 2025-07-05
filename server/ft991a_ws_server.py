@@ -8,11 +8,15 @@ DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_WS_PORT = 9001
 DEFAULT_CONNECT_URI = None
+DEFAULT_CALLSIGN = 'FT-991A'
 
 ser = None
 ser_lock = asyncio.Lock()
+CALLSIGN = DEFAULT_CALLSIGN
 
-async def handle_client(websocket):
+async def handle_client(websocket, announce=False):
+    if announce:
+        await websocket.send(json.dumps({'callsign': CALLSIGN}))
     async for message in websocket:
         data = json.loads(message)
         cmd = data.get('command')
@@ -51,7 +55,7 @@ async def client_loop(uri):
     while True:
         try:
             async with websockets.connect(uri) as ws:
-                await handle_client(ws)
+                await handle_client(ws, announce=True)
         except Exception:
             await asyncio.sleep(5)
 
@@ -67,14 +71,19 @@ async def main():
                         help='WebSocket port')
     parser.add_argument('--connect', default=DEFAULT_CONNECT_URI,
                         help='Connect to ws://host:port/path instead of serving')
+    parser.add_argument('--callsign', default=DEFAULT_CALLSIGN,
+                        help='Station callsign to announce')
     args = parser.parse_args()
 
+    global CALLSIGN
+    CALLSIGN = args.callsign
     ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
     try:
         if args.connect:
             await client_loop(args.connect)
         else:
-            async with websockets.serve(handle_client, '0.0.0.0', args.ws_port):
+            async with websockets.serve(
+                    lambda ws: handle_client(ws, True), '0.0.0.0', args.ws_port):
                 await asyncio.Future()  # run forever
     finally:
         ser.close()

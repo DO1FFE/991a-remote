@@ -5,7 +5,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 ## Aufbau
 
 - `server/flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
-- `server/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner
+- `server/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner; meldet sich mit einem frei wählbaren Rufzeichen
 - `server/templates/` – HTML-Vorlagen für Login und Steuerungsseite
 - `requirements.txt` – benötigte Python-Pakete
 
@@ -26,9 +26,12 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
    eine Verbindung zum Flask‑Server aufbauen:
    ```bash
    python server/ft991a_ws_server.py --serial-port COM3 \
-       --connect ws://991a.lima11.de:8000/ws/rig
+       --connect ws://991a.lima11.de:8000/ws/rig \
+       --callsign MYCALL
    ```
    Der COM‑Port ist ggf. anzupassen.
+   Das Rufzeichen wird an den Flask‑Server übertragen. Verbinden sich mehrere
+   Stationen, kann auf der Weboberfläche eine davon ausgewählt werden.
 
 ### Flask‑Server auf dem Client (Linux)
 

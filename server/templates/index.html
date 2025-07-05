@@ -6,6 +6,20 @@
 <body>
     <h1>FT-991A Control</h1>
     <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    {% if rigs %}
+    <form method="post" action="{{ url_for('select_rig') }}">
+        <label>Rig:
+            <select name="rig">
+            {% for r in rigs %}
+                <option value="{{ r }}" {% if r==selected_rig %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Select</button>
+    </form>
+    {% else %}
+    <p>No rig connected.</p>
+    {% endif %}
     <form method="post" action="{{ url_for('command') }}" class="cmdForm">
         <label>Frequency (Hz): <input type="text" name="value"></label>
         <input type="hidden" name="cmd" value="frequency">

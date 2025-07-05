@@ -25,7 +25,7 @@ CHANNELS = 1
 CHUNK = 1024
 INPUT_DEVICE_INDEX = None
 OUTPUT_DEVICE_INDEX = None
-RIG_WS = None
+RIGS = {}
 RIG_LOCK = threading.Lock()
 
 app = Flask(__name__)
@@ -38,22 +38,38 @@ ser = None
 
 @sock.route('/ws/rig')
 def rig(ws):
-    global RIG_WS
-    RIG_WS = ws
+    first = ws.receive()
+    callsign = None
+    try:
+        data = json.loads(first)
+        callsign = data.get('callsign')
+    except Exception:
+        pass
+    if not callsign:
+        callsign = f'rig_{id(ws)}'
+    with RIG_LOCK:
+        RIGS[callsign] = ws
     try:
         while True:
             msg = ws.receive()
             if msg is None:
                 break
     finally:
-        if RIG_WS is ws:
-            RIG_WS = None
+        with RIG_LOCK:
+            if RIGS.get(callsign) is ws:
+                del RIGS[callsign]
 
 @app.route('/')
 def index():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return render_template('index.html')
+    with RIG_LOCK:
+        rigs = list(RIGS.keys())
+    selected = session.get('rig')
+    if selected not in rigs and rigs:
+        selected = rigs[0]
+        session['rig'] = selected
+    return render_template('index.html', rigs=rigs, selected_rig=selected)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -68,6 +84,16 @@ def login():
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
+
+@app.route('/select_rig', methods=['POST'])
+def select_rig():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    rig = request.form.get('rig')
+    with RIG_LOCK:
+        if rig in RIGS:
+            session['rig'] = rig
+    return redirect(url_for('index'))
 
 @app.route('/command', methods=['POST'])
 def command():
@@ -142,7 +168,12 @@ def command():
         resp = asyncio.run(send())
         if resp is not None:
             return resp
-    elif RIG_WS:
+    elif RIGS:
+        rig = session.get('rig')
+        with RIG_LOCK:
+            ws = RIGS.get(rig)
+        if not ws:
+            return ('', 204)
         data = {'command': None}
         if cmd == 'frequency':
             try:
@@ -201,9 +232,9 @@ def command():
             return ('', 204)
 
         with RIG_LOCK:
-            RIG_WS.send(json.dumps(data))
+            ws.send(json.dumps(data))
             if cmd in ('get_frequency', 'get_mode'):
-                resp = RIG_WS.receive()
+                resp = ws.receive()
                 if resp:
                     return resp
     else:
