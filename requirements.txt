@@ -2,3 +2,4 @@ pyserial
 pyaudio
 flask
 flask-sock
+websockets

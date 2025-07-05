@@ -1,6 +1,9 @@
 import argparse
 import threading
 import serial
+import asyncio
+import json
+import websockets
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sock import Sock
 import pyaudio
@@ -14,6 +17,7 @@ SERIAL_PORT = DEFAULT_SERIAL_PORT
 SERIAL_BAUDRATE = DEFAULT_BAUDRATE
 USERNAME = DEFAULT_USERNAME
 PASSWORD = DEFAULT_PASSWORD
+REMOTE_SERVER = None
 AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16
 CHANNELS = 1
@@ -53,26 +57,56 @@ def command():
         return redirect(url_for('login'))
     cmd = request.form.get('cmd')
     value = request.form.get('value', '')
-    if cmd == 'frequency':
-        try:
-            freq = int(value)
-            ser.write(f'FA{freq:011d};'.encode('ascii'))
-        except ValueError:
-            pass
-    elif cmd == 'mode':
-        try:
-            mode = int(value)
-            ser.write(f'MD{mode:02d};'.encode('ascii'))
-        except ValueError:
-            pass
-    elif cmd == 'ptt_on':
-        ser.write(b'TX;')
-    elif cmd == 'ptt_off':
-        ser.write(b'RX;')
-    elif cmd == 'cat':
-        if not value.endswith(';'):
-            value += ';'
-        ser.write(value.encode('ascii'))
+    if REMOTE_SERVER:
+        data = {'command': None}
+        if cmd == 'frequency':
+            try:
+                freq = int(value)
+                data = {'command': 'set_frequency', 'frequency': freq}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'mode':
+            try:
+                mode = int(value)
+                data = {'command': 'set_mode', 'mode': mode}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'ptt_on':
+            data = {'command': 'ptt_on'}
+        elif cmd == 'ptt_off':
+            data = {'command': 'ptt_off'}
+        elif cmd == 'cat':
+            if not value.endswith(';'):
+                value += ';'
+            data = {'command': 'cat', 'data': value}
+        else:
+            return ('', 204)
+
+        async def send():
+            async with websockets.connect(REMOTE_SERVER) as ws:
+                await ws.send(json.dumps(data))
+        asyncio.run(send())
+    else:
+        if cmd == 'frequency':
+            try:
+                freq = int(value)
+                ser.write(f'FA{freq:011d};'.encode('ascii'))
+            except ValueError:
+                pass
+        elif cmd == 'mode':
+            try:
+                mode = int(value)
+                ser.write(f'MD{mode:02d};'.encode('ascii'))
+            except ValueError:
+                pass
+        elif cmd == 'ptt_on':
+            ser.write(b'TX;')
+        elif cmd == 'ptt_off':
+            ser.write(b'RX;')
+        elif cmd == 'cat':
+            if not value.endswith(';'):
+                value += ';'
+            ser.write(value.encode('ascii'))
     return ('', 204)
 
 @sock.route('/ws/audio')
@@ -109,12 +143,13 @@ def audio(ws):
         p.terminate()
 
 def main():
-    global SERIAL_PORT, SERIAL_BAUDRATE, USERNAME, PASSWORD, ser
+    global SERIAL_PORT, SERIAL_BAUDRATE, USERNAME, PASSWORD, ser, REMOTE_SERVER
     parser = argparse.ArgumentParser(description='FT-991A remote server')
     parser.add_argument('--serial-port', default=DEFAULT_SERIAL_PORT,
                         help='FT-991A serial port')
     parser.add_argument('--baudrate', type=int, default=DEFAULT_BAUDRATE,
                         help='Serial baud rate')
+    parser.add_argument('--server', help='Remote control server ws://host:port')
     parser.add_argument('--username', default=DEFAULT_USERNAME,
                         help='Login username')
     parser.add_argument('--password', default=DEFAULT_PASSWORD,
@@ -131,11 +166,16 @@ def main():
     PASSWORD = args.password
     app.secret_key = args.secret
 
-    ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=1)
+    REMOTE_SERVER = args.server
+    if REMOTE_SERVER:
+        ser = None
+    else:
+        ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=1)
     try:
         app.run(host='0.0.0.0', port=args.http_port)
     finally:
-        ser.close()
+        if ser:
+            ser.close()
 
 
 if __name__ == '__main__':
