@@ -93,6 +93,35 @@ def command():
             data = {'command': 'ptt_on'}
         elif cmd == 'ptt_off':
             data = {'command': 'ptt_off'}
+        elif cmd == 'shift':
+            if value in ('0', '1', '2'):
+                data = {'command': 'cat', 'data': f'RT{value};'}
+            else:
+                return ('', 204)
+        elif cmd == 'offset':
+            try:
+                off = int(value)
+                data = {'command': 'cat', 'data': f'OF{off:07d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'ctcss':
+            try:
+                tone = float(value)
+                data = {'command': 'cat', 'data': f'CT{int(tone*10):04d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'dcs':
+            try:
+                code = int(value)
+                data = {'command': 'cat', 'data': f'DS{code:03d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'mic_gain':
+            try:
+                gain = int(value)
+                data = {'command': 'cat', 'data': f'MG{gain:03d};'}
+            except ValueError:
+                return ('', 204)
         elif cmd == 'cat':
             if not value.endswith(';'):
                 value += ';'
@@ -131,6 +160,35 @@ def command():
             data = {'command': 'ptt_on'}
         elif cmd == 'ptt_off':
             data = {'command': 'ptt_off'}
+        elif cmd == 'shift':
+            if value in ('0', '1', '2'):
+                data = {'command': 'cat', 'data': f'RT{value};'}
+            else:
+                return ('', 204)
+        elif cmd == 'offset':
+            try:
+                off = int(value)
+                data = {'command': 'cat', 'data': f'OF{off:07d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'ctcss':
+            try:
+                tone = float(value)
+                data = {'command': 'cat', 'data': f'CT{int(tone*10):04d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'dcs':
+            try:
+                code = int(value)
+                data = {'command': 'cat', 'data': f'DS{code:03d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'mic_gain':
+            try:
+                gain = int(value)
+                data = {'command': 'cat', 'data': f'MG{gain:03d};'}
+            except ValueError:
+                return ('', 204)
         elif cmd == 'cat':
             if not value.endswith(';'):
                 value += ';'
@@ -165,6 +223,35 @@ def command():
             ser.write(b'TX;')
         elif cmd == 'ptt_off':
             ser.write(b'RX;')
+        elif cmd == 'shift':
+            if value in ('0', '1', '2'):
+                ser.write(f'RT{value};'.encode('ascii'))
+            else:
+                pass
+        elif cmd == 'offset':
+            try:
+                off = int(value)
+                ser.write(f'OF{off:07d};'.encode('ascii'))
+            except ValueError:
+                pass
+        elif cmd == 'ctcss':
+            try:
+                tone = float(value)
+                ser.write(f'CT{int(tone*10):04d};'.encode('ascii'))
+            except ValueError:
+                pass
+        elif cmd == 'dcs':
+            try:
+                code = int(value)
+                ser.write(f'DS{code:03d};'.encode('ascii'))
+            except ValueError:
+                pass
+        elif cmd == 'mic_gain':
+            try:
+                gain = int(value)
+                ser.write(f'MG{gain:03d};'.encode('ascii'))
+            except ValueError:
+                pass
         elif cmd == 'cat':
             if not value.endswith(';'):
                 value += ';'
