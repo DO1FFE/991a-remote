@@ -24,6 +24,14 @@
         <input type="hidden" name="cmd" value="ptt_off">
         <button type="submit">PTT OFF</button>
     </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <input type="hidden" name="cmd" value="get_frequency">
+        <button type="submit">Read Frequency</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <input type="hidden" name="cmd" value="get_mode">
+        <button type="submit">Read Mode</button>
+    </form>
     <form method="post" action="{{ url_for('command') }}">
         <label>CAT Command: <input type="text" name="value" placeholder="EX;"/></label>
         <input type="hidden" name="cmd" value="cat">
@@ -75,7 +83,9 @@ function stopAudio(){
 document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
-        fetch(f.action, {method:'POST', body:new FormData(f)});
+        fetch(f.action, {method:'POST', body:new FormData(f)})
+            .then(r => r.text())
+            .then(t => { if(t) alert(t); });
     });
 });
 </script>
