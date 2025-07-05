@@ -30,15 +30,23 @@ def run_audio_client(server_ip="127.0.0.1", server_port=9003, client_port=9002):
     sock_rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock_rx.bind(("0.0.0.0", client_port))
 
-    print("Audio client running")
-    while True:
-        data = input_stream.read(CHUNK, exception_on_overflow=False)
-        sock_tx.sendto(data, (server_ip, server_port))
-        try:
-            packet, _ = sock_rx.recvfrom(CHUNK * 2)
-            output_stream.write(packet)
-        except socket.error:
-            pass
+    print("Audio client running (Ctrl+C to stop)")
+    try:
+        while True:
+            data = input_stream.read(CHUNK, exception_on_overflow=False)
+            sock_tx.sendto(data, (server_ip, server_port))
+            try:
+                packet, _ = sock_rx.recvfrom(CHUNK * 2)
+                output_stream.write(packet)
+            except socket.error:
+                pass
+    except KeyboardInterrupt:
+        print("Stopping audio client")
+    finally:
+        input_stream.close()
+        output_stream.close()
+        sock_tx.close()
+        sock_rx.close()
 
 
 if __name__ == "__main__":

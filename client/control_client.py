@@ -1,16 +1,20 @@
 import asyncio
 import json
+import sys
 import websockets
 
 SERVER_IP = '127.0.0.1'
 
 async def send_command(command):
     uri = f'ws://{SERVER_IP}:9001'
-    async with websockets.connect(uri) as websocket:
-        await websocket.send(json.dumps(command))
-        if command.get('command') == 'get_frequency':
-            resp = await websocket.recv()
-            print(resp)
+    try:
+        async with websockets.connect(uri) as websocket:
+            await websocket.send(json.dumps(command))
+            if command.get('command') == 'get_frequency':
+                resp = await websocket.recv()
+                print(resp)
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == '__main__':
     import argparse
@@ -35,7 +39,12 @@ if __name__ == '__main__':
     if args.query:
         commands.append({'command': 'get_frequency'})
 
+    if not commands:
+        parser.print_help()
+        sys.exit(0)
+
     async def run():
         for cmd in commands:
             await send_command(cmd)
+
     asyncio.run(run())
