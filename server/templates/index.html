@@ -17,6 +17,37 @@
         <button type="submit">Set Mode</button>
     </form>
     <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>Shift:
+            <select name="value">
+                <option value="0">Simplex</option>
+                <option value="1">-</option>
+                <option value="2">+</option>
+            </select>
+        </label>
+        <input type="hidden" name="cmd" value="shift">
+        <button type="submit">Set Shift</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>Offset (Hz): <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="offset">
+        <button type="submit">Set Offset</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>CTCSS (Hz): <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="ctcss">
+        <button type="submit">Set CTCSS</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>DCS Code: <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="dcs">
+        <button type="submit">Set DCS</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>MIC Gain: <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="mic_gain">
+        <button type="submit">Set MIC Gain</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
         <input type="hidden" name="cmd" value="ptt_on">
         <button type="submit">PTT ON</button>
     </form>
