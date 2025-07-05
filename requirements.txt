@@ -1,3 +1,4 @@
 pyserial
-websockets
 pyaudio
+flask
+flask-sock

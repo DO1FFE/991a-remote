@@ -1,0 +1,142 @@
+import argparse
+import threading
+import serial
+from flask import Flask, render_template, request, redirect, session, url_for
+from flask_sock import Sock
+import pyaudio
+
+DEFAULT_SERIAL_PORT = 'COM3'
+DEFAULT_BAUDRATE = 9600
+DEFAULT_USERNAME = 'admin'
+DEFAULT_PASSWORD = 'secret'
+
+SERIAL_PORT = DEFAULT_SERIAL_PORT
+SERIAL_BAUDRATE = DEFAULT_BAUDRATE
+USERNAME = DEFAULT_USERNAME
+PASSWORD = DEFAULT_PASSWORD
+AUDIO_RATE = 16000
+AUDIO_FORMAT = pyaudio.paInt16
+CHANNELS = 1
+CHUNK = 1024
+
+app = Flask(__name__)
+DEFAULT_SECRET = 'change-me'
+app.secret_key = DEFAULT_SECRET
+
+sock = Sock(app)
+
+ser = None
+
+@app.route('/')
+def index():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form.get('username') == USERNAME and request.form.get('password') == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        return render_template('login.html', error='Invalid credentials')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+@app.route('/command', methods=['POST'])
+def command():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    cmd = request.form.get('cmd')
+    value = request.form.get('value', '')
+    if cmd == 'frequency':
+        try:
+            freq = int(value)
+            ser.write(f'FA{freq:011d};'.encode('ascii'))
+        except ValueError:
+            pass
+    elif cmd == 'mode':
+        try:
+            mode = int(value)
+            ser.write(f'MD{mode:02d};'.encode('ascii'))
+        except ValueError:
+            pass
+    elif cmd == 'ptt_on':
+        ser.write(b'TX;')
+    elif cmd == 'ptt_off':
+        ser.write(b'RX;')
+    elif cmd == 'cat':
+        if not value.endswith(';'):
+            value += ';'
+        ser.write(value.encode('ascii'))
+    return ('', 204)
+
+@sock.route('/ws/audio')
+def audio(ws):
+    p = pyaudio.PyAudio()
+    input_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                          input=True, frames_per_buffer=CHUNK)
+    output_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                           output=True, frames_per_buffer=CHUNK)
+    running = True
+
+    def send_audio():
+        while running:
+            data = input_stream.read(CHUNK, exception_on_overflow=False)
+            try:
+                ws.send(data)
+            except Exception:
+                break
+
+    t = threading.Thread(target=send_audio, daemon=True)
+    t.start()
+    try:
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+            output_stream.write(msg)
+    except Exception:
+        pass
+    finally:
+        running = False
+        input_stream.close()
+        output_stream.close()
+        p.terminate()
+
+def main():
+    global SERIAL_PORT, SERIAL_BAUDRATE, USERNAME, PASSWORD, ser
+    parser = argparse.ArgumentParser(description='FT-991A remote server')
+    parser.add_argument('--serial-port', default=DEFAULT_SERIAL_PORT,
+                        help='FT-991A serial port')
+    parser.add_argument('--baudrate', type=int, default=DEFAULT_BAUDRATE,
+                        help='Serial baud rate')
+    parser.add_argument('--username', default=DEFAULT_USERNAME,
+                        help='Login username')
+    parser.add_argument('--password', default=DEFAULT_PASSWORD,
+                        help='Login password')
+    parser.add_argument('--http-port', type=int, default=8000,
+                        help='Port for the web interface')
+    parser.add_argument('--secret', default=DEFAULT_SECRET,
+                        help='Flask secret key')
+    args = parser.parse_args()
+
+    SERIAL_PORT = args.serial_port
+    SERIAL_BAUDRATE = args.baudrate
+    USERNAME = args.username
+    PASSWORD = args.password
+    app.secret_key = args.secret
+
+    ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=1)
+    try:
+        app.run(host='0.0.0.0', port=args.http_port)
+    finally:
+        ser.close()
+
+
+if __name__ == '__main__':
+    main()

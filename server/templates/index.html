@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FT-991A Control</title>
+</head>
+<body>
+    <h1>FT-991A Control</h1>
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>Frequency (Hz): <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="frequency">
+        <button type="submit">Set Frequency</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <label>Mode No.: <input type="text" name="value"></label>
+        <input type="hidden" name="cmd" value="mode">
+        <button type="submit">Set Mode</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <input type="hidden" name="cmd" value="ptt_on">
+        <button type="submit">PTT ON</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+        <input type="hidden" name="cmd" value="ptt_off">
+        <button type="submit">PTT OFF</button>
+    </form>
+    <form method="post" action="{{ url_for('command') }}">
+        <label>CAT Command: <input type="text" name="value" placeholder="EX;"/></label>
+        <input type="hidden" name="cmd" value="cat">
+        <button type="submit">Send CAT</button>
+    </form>
+    <button onclick="startAudio()">Start Audio</button>
+    <button onclick="stopAudio()">Stop Audio</button>
+<script>
+let sock;
+let processor;
+function startAudio(){
+    sock = new WebSocket('ws://' + location.host + '/ws/audio');
+    sock.binaryType = 'arraybuffer';
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
+        const source = audioCtx.createMediaStreamSource(stream);
+        processor = audioCtx.createScriptProcessor(1024,1,1);
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+        processor.onaudioprocess = e=>{
+            const input=e.inputBuffer.getChannelData(0);
+            const buf=new ArrayBuffer(input.length*2);
+            const view=new DataView(buf);
+            for(let i=0;i<input.length;i++){
+                let s=Math.max(-1,Math.min(1,input[i]));
+                view.setInt16(i*2,s*0x7FFF,true);
+            }
+            if(sock.readyState===WebSocket.OPEN) sock.send(buf);
+        };
+        sock.onmessage=event=>{
+            const view=new DataView(event.data);
+            const floats=new Float32Array(view.byteLength/2);
+            for(let i=0;i<floats.length;i++){
+                floats[i]=view.getInt16(i*2,true)/0x8000;
+            }
+            const buffer=audioCtx.createBuffer(1,floats.length,16000);
+            buffer.getChannelData(0).set(floats);
+            const bs=audioCtx.createBufferSource();
+            bs.buffer=buffer;
+            bs.connect(audioCtx.destination);
+            bs.start();
+        };
+    });
+}
+function stopAudio(){
+    if(processor){ processor.disconnect(); processor=null; }
+    if(sock){ sock.close(); sock=null; }
+}
+document.querySelectorAll('.cmdForm').forEach(f => {
+    f.addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(f.action, {method:'POST', body:new FormData(f)});
+    });
+});
+</script>
+</body>
+</html>
