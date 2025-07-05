@@ -37,13 +37,15 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server wartet auf eine eingehende Verbindung des Steuerungsdienstes:
    ```bash
-   python server/flask_server.py --username admin --password secret
+   python server/flask_server.py
    ```
-   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`) und verlangt beim Aufruf im Browser Benutzername und Passwort.
+   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`).
+   Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
+   Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
-2. Nach erfolgreichem Login kann sich jeder Benutzer mit einem frei wählbaren Nutzernamen anmelden. Pro angeschlossenem 991A kann genau ein Nutzer die Rolle des Operators übernehmen und das Gerät steuern. Alle weiteren eingeloggten Nutzer können den Audiostream im sogenannten SWL-Modus mithören.
+2. Benutzer registrieren sich über die Weboberfläche mit ihrem Rufzeichen und einem Passwort. Erst nach Freischaltung durch einen Administrator dürfen sie das Gerät als Operator bedienen. Bis dahin können sie lediglich im SWL-Modus zuhören.
 
 Die Implementierung bildet nur grundlegende Funktionen ab und kann als Grundlage für eigene Erweiterungen dienen.
 

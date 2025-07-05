@@ -1,0 +1,8 @@
+{
+  "admin": {
+    "password": "scrypt:32768:8:1$TcoiTY1bQX5Custw$cbf8852fd0b17a1f48e61b2eeb1f9888bf20c10594e0ca9c3cf94920e5fc711ad5f3775f396ab33f7a9096d3c314af828ce603ebb9a48efc064a2a65030a1632",
+    "role": "admin",
+    "approved": true,
+    "needs_change": true
+  }
+}
