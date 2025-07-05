@@ -12,7 +12,7 @@ DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'secret'
-DEFAULT_REMOTE_SERVER = 'ws://911a.lima11.de:9001'
+DEFAULT_REMOTE_SERVER = 'ws://991a.lima11.de:9001'
 
 SERIAL_PORT = DEFAULT_SERIAL_PORT
 SERIAL_BAUDRATE = DEFAULT_BAUDRATE
@@ -25,6 +25,8 @@ CHANNELS = 1
 CHUNK = 1024
 INPUT_DEVICE_INDEX = None
 OUTPUT_DEVICE_INDEX = None
+RIG_WS = None
+RIG_LOCK = threading.Lock()
 
 app = Flask(__name__)
 DEFAULT_SECRET = 'change-me'
@@ -33,6 +35,19 @@ app.secret_key = DEFAULT_SECRET
 sock = Sock(app)
 
 ser = None
+
+@sock.route('/ws/rig')
+def rig(ws):
+    global RIG_WS
+    RIG_WS = ws
+    try:
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+    finally:
+        if RIG_WS is ws:
+            RIG_WS = None
 
 @app.route('/')
 def index():
@@ -98,6 +113,41 @@ def command():
         resp = asyncio.run(send())
         if resp is not None:
             return resp
+    elif RIG_WS:
+        data = {'command': None}
+        if cmd == 'frequency':
+            try:
+                freq = int(value)
+                data = {'command': 'set_frequency', 'frequency': freq}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'mode':
+            try:
+                mode = int(value)
+                data = {'command': 'set_mode', 'mode': mode}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'ptt_on':
+            data = {'command': 'ptt_on'}
+        elif cmd == 'ptt_off':
+            data = {'command': 'ptt_off'}
+        elif cmd == 'cat':
+            if not value.endswith(';'):
+                value += ';'
+            data = {'command': 'cat', 'data': value}
+        elif cmd == 'get_frequency':
+            data = {'command': 'get_frequency'}
+        elif cmd == 'get_mode':
+            data = {'command': 'get_mode'}
+        else:
+            return ('', 204)
+
+        with RIG_LOCK:
+            RIG_WS.send(json.dumps(data))
+            if cmd in ('get_frequency', 'get_mode'):
+                resp = RIG_WS.receive()
+                if resp:
+                    return resp
     else:
         if cmd == 'frequency':
             try:

@@ -7,6 +7,7 @@ import websockets
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_WS_PORT = 9001
+DEFAULT_CONNECT_URI = None
 
 ser = None
 ser_lock = asyncio.Lock()
@@ -46,6 +47,15 @@ async def handle_client(websocket):
                 reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
 
+async def client_loop(uri):
+    while True:
+        try:
+            async with websockets.connect(uri) as ws:
+                await handle_client(ws)
+        except Exception:
+            await asyncio.sleep(5)
+
+
 async def main():
     global ser
     parser = argparse.ArgumentParser(description='FT-991A control server')
@@ -55,12 +65,17 @@ async def main():
                         help='Serial baud rate')
     parser.add_argument('--ws-port', type=int, default=DEFAULT_WS_PORT,
                         help='WebSocket port')
+    parser.add_argument('--connect', default=DEFAULT_CONNECT_URI,
+                        help='Connect to ws://host:port/path instead of serving')
     args = parser.parse_args()
 
     ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
     try:
-        async with websockets.serve(handle_client, '0.0.0.0', args.ws_port):
-            await asyncio.Future()  # run forever
+        if args.connect:
+            await client_loop(args.connect)
+        else:
+            async with websockets.serve(handle_client, '0.0.0.0', args.ws_port):
+                await asyncio.Future()  # run forever
     finally:
         ser.close()
 
