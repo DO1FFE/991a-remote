@@ -1,43 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Administration</title>
+    <title>Benutzerverwaltung</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>User Administration</h1>
+<div class="container">
+    <h1>Benutzerverwaltung</h1>
     <table border="1">
-        <tr><th>User</th><th>Role</th><th>Approved</th><th>TRX</th><th>Actions</th></tr>
+        <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Aktionen</th></tr>
         {% for name, u in users.items() %}
         <tr>
             <td>{{ name }}</td>
             <td>{{ u.role }}</td>
-            <td>{{ 'yes' if u.approved else 'no' }}</td>
-            <td>{{ 'yes' if u.trx else 'no' }}</td>
+            <td>{{ 'ja' if u.approved else 'nein' }}</td>
+            <td>{{ 'ja' if u.trx else 'nein' }}</td>
             <td>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="approve">
-                    <button type="submit">Approve</button>
+                    <button type="submit">Freischalten</button>
                 </form>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="make_admin">
-                    <button type="submit">Make Admin</button>
+                    <button type="submit">Admin machen</button>
                 </form>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="make_trx">
-                    <button type="submit">Make TRX</button>
+                    <button type="submit">TRX zuweisen</button>
                 </form>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="remove_trx">
-                    <button type="submit">Remove TRX</button>
+                    <button type="submit">TRX entfernen</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
     </table>
-    <p><a href="{{ url_for('index') }}">Back</a></p>
+    <p><a href="{{ url_for('index') }}">Zur&uuml;ck</a></p>
+    <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
+</div>
 </body>
 </html>

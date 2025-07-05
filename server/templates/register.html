@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Register</title>
+    <title>Registrierung</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Register</h1>
+<div class="container">
+    <h1>Registrierung</h1>
     {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
     <form method="post">
-        <label>Callsign: <input type="text" name="username"></label><br>
-        <label>Password: <input type="password" name="password"></label><br>
-        <button type="submit">Register</button>
+        <label>Rufzeichen: <input type="text" name="username"></label><br>
+        <label>Passwort: <input type="password" name="password"></label><br>
+        <button type="submit">Registrieren</button>
     </form>
-    <p><a href="{{ url_for('login') }}">Back to Login</a></p>
+    <p><a href="{{ url_for('login') }}">Zur Anmeldung</a></p>
+    <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
+</div>
 </body>
 </html>
