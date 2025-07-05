@@ -20,12 +20,20 @@ sock_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_rx.bind(('0.0.0.0', SERVER_PORT))
 
-print('Audio bridge running')
-while True:
-    data = input_stream.read(CHUNK, exception_on_overflow=False)
-    sock_tx.sendto(data, (CLIENT_IP, CLIENT_PORT))
-    try:
-        packet, _ = sock_rx.recvfrom(CHUNK * 2)
-        output_stream.write(packet)
-    except socket.error:
-        pass
+print('Audio bridge running (Ctrl+C to stop)')
+try:
+    while True:
+        data = input_stream.read(CHUNK, exception_on_overflow=False)
+        sock_tx.sendto(data, (CLIENT_IP, CLIENT_PORT))
+        try:
+            packet, _ = sock_rx.recvfrom(CHUNK * 2)
+            output_stream.write(packet)
+        except socket.error:
+            pass
+except KeyboardInterrupt:
+    print('Stopping audio bridge')
+finally:
+    input_stream.close()
+    output_stream.close()
+    sock_tx.close()
+    sock_rx.close()
