@@ -48,7 +48,8 @@ python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8000/ws/rig \
    ```
    Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`).
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
-   Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
+    Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
+    Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen.
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
