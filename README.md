@@ -26,7 +26,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
    eine Verbindung zum Flask‑Server aufbauen. Dabei melden Sie sich mit Ihren Benutzerdaten an:
    ```bash
    python server/ft991a_ws_server.py --serial-port COM3 \
-       --connect ws://991a.lima11.de:8000/ws/rig \
+       --connect ws://991a.lima11.de:8084/ws/rig \
        --callsign MYCALL --username MYCALL --password secret --mode trx
    ```
    Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, kann auf der Weboberfläche eine davon ausgewählt werden.
@@ -36,7 +36,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 Möchten Sie mit dem Programm selbst einen entfernten TRX bedienen, starten Sie es ohne serielle Schnittstelle und melden sich als Operator an:
 
 ```bash
-python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8000/ws/rig \
+python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
     --username MYCALL --password secret --mode operator
 ```
 
@@ -46,7 +46,7 @@ python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8000/ws/rig \
    ```bash
    python server/flask_server.py
    ```
-   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`).
+   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8084 (anpassbar mit `--http-port`).
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
     Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
     Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen.
