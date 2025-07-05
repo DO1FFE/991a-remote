@@ -5,7 +5,12 @@
 </head>
 <body>
     <h1>FT-991A Control</h1>
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <p><a href="{{ url_for('logout') }}">Logout</a>
+    {% if role == 'admin' %}| <a href="{{ url_for('admin_users') }}">User Admin</a>{% endif %}</p>
+    <p>Logged in as {{ user }} ({{ role }})</p>
+    {% if not approved and role != 'admin' %}
+    <p style="color:orange;">Waiting for approval. You can only listen.</p>
+    {% endif %}
     {% if rigs %}
     <form method="post" action="{{ url_for('select_rig') }}">
         <label>Rig:
@@ -18,23 +23,25 @@
         <button type="submit">Select</button>
     </form>
     <p>Operator: {{ operator or 'none' }}</p>
-    {% if operator == user %}
-    <form method="post" action="{{ url_for('release_control') }}">
-        <button type="submit">Release Control</button>
-    </form>
-    {% elif not operator %}
-    <form method="post" action="{{ url_for('take_control') }}">
-        <button type="submit">Take Control</button>
-    </form>
-    {% else %}
-    <form method="post" action="{{ url_for('take_control') }}">
-        <button type="submit" disabled>Take Control</button>
-    </form>
+    {% if role == 'admin' or approved %}
+        {% if operator == user %}
+        <form method="post" action="{{ url_for('release_control') }}">
+            <button type="submit">Release Control</button>
+        </form>
+        {% elif not operator %}
+        <form method="post" action="{{ url_for('take_control') }}">
+            <button type="submit">Take Control</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('take_control') }}">
+            <button type="submit" disabled>Take Control</button>
+        </form>
+        {% endif %}
     {% endif %}
     {% else %}
     <p>No rig connected.</p>
     {% endif %}
-    {% if operator == user %}
+    {% if (role == 'admin' or approved) and operator == user %}
     <form method="post" action="{{ url_for('command') }}" class="cmdForm">
         <label>Frequency (Hz): <input type="text" name="value"></label>
         <input type="hidden" name="cmd" value="frequency">

@@ -3,21 +3,23 @@ import threading
 import serial
 import asyncio
 import json
+import os
 import websockets
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sock import Sock
+from werkzeug.security import generate_password_hash, check_password_hash
 import pyaudio
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_USERNAME = 'admin'
-DEFAULT_PASSWORD = 'secret'
 DEFAULT_REMOTE_SERVER = 'ws://991a.lima11.de:9001'
+
+USERS_FILE = 'users.json'
+USERS = {}
+USERS_LOCK = threading.Lock()
 
 SERIAL_PORT = DEFAULT_SERIAL_PORT
 SERIAL_BAUDRATE = DEFAULT_BAUDRATE
-USERNAME = DEFAULT_USERNAME
-PASSWORD = DEFAULT_PASSWORD
 REMOTE_SERVER = None
 AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16
@@ -37,6 +39,31 @@ app.secret_key = DEFAULT_SECRET
 sock = Sock(app)
 
 ser = None
+
+
+def load_users():
+    global USERS
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            USERS = json.load(f)
+    else:
+        USERS = {
+            'admin': {
+                'password': generate_password_hash('admin'),
+                'role': 'admin',
+                'approved': True,
+                'needs_change': True,
+            }
+        }
+        save_users()
+
+
+def save_users():
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(USERS, f)
+
+
+load_users()
 
 @sock.route('/ws/rig')
 def rig(ws):
@@ -72,20 +99,97 @@ def index():
         selected = rigs[0]
         session['rig'] = selected
     user = session.get('user')
+    role = session.get('role')
+    approved = session.get('approved')
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
     return render_template('index.html', rigs=rigs, selected_rig=selected,
-                           operator=operator, user=user)
+                           operator=operator, user=user, role=role,
+                           approved=approved)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('password') == PASSWORD:
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        user = USERS.get(username)
+        if user and check_password_hash(user['password'], password):
             session['logged_in'] = True
-            session['user'] = request.form.get('username') or 'anonymous'
+            session['user'] = username
+            session['role'] = user.get('role', 'operator')
+            session['approved'] = user.get('approved', False) or session['role'] == 'admin'
+            if user.get('needs_change'):
+                return redirect(url_for('change_credentials'))
             return redirect(url_for('index'))
         return render_template('login.html', error='Invalid credentials')
     return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        if not username or not password:
+            return render_template('register.html', error='Invalid data')
+        with USERS_LOCK:
+            if username in USERS:
+                return render_template('register.html', error='User exists')
+            USERS[username] = {
+                'password': generate_password_hash(password),
+                'role': 'operator',
+                'approved': False,
+                'needs_change': False,
+            }
+            save_users()
+        return render_template('login.html', message='Registration successful. Await approval.')
+    return render_template('register.html')
+
+
+@app.route('/change_credentials', methods=['GET', 'POST'])
+def change_credentials():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    username = session.get('user')
+    user = USERS.get(username)
+    if not user:
+        return redirect(url_for('logout'))
+    if request.method == 'POST':
+        new_username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        if not new_username or not password:
+            return render_template('change_credentials.html', error='Invalid data')
+        with USERS_LOCK:
+            if new_username != username and new_username in USERS:
+                return render_template('change_credentials.html', error='User exists')
+            user['password'] = generate_password_hash(password)
+            user['needs_change'] = False
+            if new_username != username:
+                USERS[new_username] = user
+                del USERS[username]
+                session['user'] = new_username
+        save_users()
+        return redirect(url_for('index'))
+    return render_template('change_credentials.html', current=username)
+
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+def admin_users():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        action = request.form.get('action')
+        with USERS_LOCK:
+            user = USERS.get(username)
+            if user:
+                if action == 'approve':
+                    user['approved'] = True
+                elif action == 'make_admin':
+                    user['role'] = 'admin'
+                    user['approved'] = True
+                save_users()
+    return render_template('userlist.html', users=USERS)
 
 @app.route('/logout')
 def logout():
@@ -96,6 +200,8 @@ def logout():
             if OPERATORS.get(rig) == user:
                 OPERATORS.pop(rig, None)
     session.pop('logged_in', None)
+    session.pop('role', None)
+    session.pop('approved', None)
     return redirect(url_for('login'))
 
 @app.route('/select_rig', methods=['POST'])
@@ -112,6 +218,8 @@ def select_rig():
 def take_control():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    if not session.get('approved') and session.get('role') != 'admin':
+        return redirect(url_for('index'))
     rig = session.get('rig')
     user = session.get('user')
     if rig and user:
@@ -124,6 +232,8 @@ def take_control():
 def release_control():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    if not session.get('approved') and session.get('role') != 'admin':
+        return redirect(url_for('index'))
     rig = session.get('rig')
     user = session.get('user')
     if rig and user:
@@ -136,6 +246,8 @@ def release_control():
 def command():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    if not session.get('approved') and session.get('role') != 'admin':
+        return ('', 403)
     user = session.get('user')
     rig = session.get('rig')
     if rig:
@@ -374,7 +486,7 @@ def audio(ws):
         p.terminate()
 
 def main():
-    global SERIAL_PORT, SERIAL_BAUDRATE, USERNAME, PASSWORD, ser, REMOTE_SERVER
+    global SERIAL_PORT, SERIAL_BAUDRATE, ser, REMOTE_SERVER
     parser = argparse.ArgumentParser(description='FT-991A remote server')
     parser.add_argument('--serial-port', default=DEFAULT_SERIAL_PORT,
                         help='FT-991A serial port')
@@ -382,10 +494,6 @@ def main():
                         help='Serial baud rate')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
                         help='Remote control server ws://host:port')
-    parser.add_argument('--username', default=DEFAULT_USERNAME,
-                        help='Login username')
-    parser.add_argument('--password', default=DEFAULT_PASSWORD,
-                        help='Login password')
     parser.add_argument('--http-port', type=int, default=8000,
                         help='Port for the web interface')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
@@ -400,8 +508,6 @@ def main():
 
     SERIAL_PORT = args.serial_port
     SERIAL_BAUDRATE = args.baudrate
-    USERNAME = args.username
-    PASSWORD = args.password
     app.secret_key = args.secret
     global INPUT_DEVICE_INDEX, OUTPUT_DEVICE_INDEX
     INPUT_DEVICE_INDEX = args.input_device

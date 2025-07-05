@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Administration</title>
+</head>
+<body>
+    <h1>User Administration</h1>
+    <table border="1">
+        <tr><th>User</th><th>Role</th><th>Approved</th><th>Actions</th></tr>
+        {% for name, u in users.items() %}
+        <tr>
+            <td>{{ name }}</td>
+            <td>{{ u.role }}</td>
+            <td>{{ 'yes' if u.approved else 'no' }}</td>
+            <td>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="username" value="{{ name }}">
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit">Approve</button>
+                </form>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="username" value="{{ name }}">
+                    <input type="hidden" name="action" value="make_admin">
+                    <button type="submit">Make Admin</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p><a href="{{ url_for('index') }}">Back</a></p>
+</body>
+</html>
