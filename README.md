@@ -22,19 +22,21 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 ### Server am Funkgerät (Windows)
 
-1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten:
+1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
+   eine Verbindung zum Flask‑Server aufbauen:
    ```bash
-   python server/ft991a_ws_server.py --serial-port COM3
+   python server/ft991a_ws_server.py --serial-port COM3 \
+       --connect ws://991a.lima11.de:8000/ws/rig
    ```
-   Der COM‑Port ist ggf. anzupassen. Der Dienst lauscht auf Port 9001 für WebSocket‑Verbindungen.
+   Der COM‑Port ist ggf. anzupassen.
 
 ### Flask‑Server auf dem Client (Linux)
 
-1. Auf dem Linux‑Rechner die Weboberfläche starten. Standardmäßig wird die Verbindung zum Dienst unter `ws://911a.lima11.de:9001` aufgebaut:
+1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server wartet auf eine eingehende Verbindung des Steuerungsdienstes:
    ```bash
    python server/flask_server.py --username admin --password secret
    ```
-   Abweichend lässt sich mit `--server` eine andere Adresse angeben. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`) und verlangt beim Aufruf im Browser Benutzername und Passwort.
+   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8000 (anpassbar mit `--http-port`) und verlangt beim Aufruf im Browser Benutzername und Passwort.
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
