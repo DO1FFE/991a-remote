@@ -43,7 +43,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
-2. Nach erfolgreichem Login können Frequenz, Modus und PTT gesteuert werden. Zudem steht ein Feld für beliebige CAT-Befehle zur Verfügung.
+2. Nach erfolgreichem Login kann sich jeder Benutzer mit einem frei wählbaren Nutzernamen anmelden. Pro angeschlossenem 991A kann genau ein Nutzer die Rolle des Operators übernehmen und das Gerät steuern. Alle weiteren eingeloggten Nutzer können den Audiostream im sogenannten SWL-Modus mithören.
 
 Die Implementierung bildet nur grundlegende Funktionen ab und kann als Grundlage für eigene Erweiterungen dienen.
 

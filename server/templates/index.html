@@ -17,9 +17,24 @@
         </label>
         <button type="submit">Select</button>
     </form>
+    <p>Operator: {{ operator or 'none' }}</p>
+    {% if operator == user %}
+    <form method="post" action="{{ url_for('release_control') }}">
+        <button type="submit">Release Control</button>
+    </form>
+    {% elif not operator %}
+    <form method="post" action="{{ url_for('take_control') }}">
+        <button type="submit">Take Control</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('take_control') }}">
+        <button type="submit" disabled>Take Control</button>
+    </form>
+    {% endif %}
     {% else %}
     <p>No rig connected.</p>
     {% endif %}
+    {% if operator == user %}
     <form method="post" action="{{ url_for('command') }}" class="cmdForm">
         <label>Frequency (Hz): <input type="text" name="value"></label>
         <input type="hidden" name="cmd" value="frequency">
@@ -82,6 +97,7 @@
         <input type="hidden" name="cmd" value="cat">
         <button type="submit">Send CAT</button>
     </form>
+    {% endif %}
     <button onclick="startAudio()">Start Audio</button>
     <button onclick="stopAudio()">Stop Audio</button>
 <script>
