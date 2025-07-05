@@ -1,5 +1,8 @@
 import asyncio
 import json
+import os
+import subprocess
+import sys
 import tkinter as tk
 from tkinter import ttk
 import websockets
@@ -8,12 +11,16 @@ class RemoteClientGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("FT-991A Remote")
-        self.geometry("300x250")
+        self.geometry("320x420")
 
         self.server_ip = tk.StringVar(value="127.0.0.1")
         self.frequency = tk.StringVar()
         self.mode = tk.StringVar()
+        self.audio_server_ip = tk.StringVar(value="127.0.0.1")
+        self.audio_server_port = tk.StringVar(value="9003")
+        self.audio_client_port = tk.StringVar(value="9002")
         self.status = tk.StringVar()
+        self.audio_process = None
 
         tk.Label(self, text="Server IP:").pack(pady=2)
         tk.Entry(self, textvariable=self.server_ip).pack(pady=2)
@@ -31,6 +38,16 @@ class RemoteClientGUI(tk.Tk):
         tk.Button(self, text="PTT OFF", command=self.ptt_off).pack(pady=2)
 
         tk.Button(self, text="Query Frequency", command=self.query_frequency).pack(pady=2)
+
+        tk.Label(self, text="Audio Server IP:").pack(pady=2)
+        tk.Entry(self, textvariable=self.audio_server_ip).pack(pady=2)
+        tk.Label(self, text="Audio Server Port:").pack(pady=2)
+        tk.Entry(self, textvariable=self.audio_server_port).pack(pady=2)
+        tk.Label(self, text="Audio Client Port:").pack(pady=2)
+        tk.Entry(self, textvariable=self.audio_client_port).pack(pady=2)
+        tk.Button(self, text="Start Audio", command=self.start_audio).pack(pady=2)
+        tk.Button(self, text="Stop Audio", command=self.stop_audio).pack(pady=2)
+
         tk.Label(self, textvariable=self.status).pack(pady=2)
 
     def send_command(self, command):
@@ -71,6 +88,34 @@ class RemoteClientGUI(tk.Tk):
 
     def query_frequency(self):
         self.send_command({"command": "get_frequency"})
+
+    def start_audio(self):
+        if self.audio_process is not None:
+            self.status.set("Audio already running")
+            return
+        script = os.path.join(os.path.dirname(__file__), "audio_client.py")
+        cmd = [
+            sys.executable,
+            script,
+            "--server",
+            self.audio_server_ip.get(),
+            "--sport",
+            self.audio_server_port.get(),
+            "--cport",
+            self.audio_client_port.get(),
+        ]
+        try:
+            self.audio_process = subprocess.Popen(cmd)
+            self.status.set("Audio started")
+        except Exception as e:
+            self.status.set(str(e))
+
+    def stop_audio(self):
+        if self.audio_process is not None:
+            self.audio_process.terminate()
+            self.audio_process.wait()
+            self.audio_process = None
+            self.status.set("Audio stopped")
 
 if __name__ == "__main__":
     app = RemoteClientGUI()
