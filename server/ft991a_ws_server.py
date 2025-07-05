@@ -37,6 +37,14 @@ async def handle_client(websocket):
                 if not value.endswith(';'):
                     value += ';'
                 ser.write(value.encode('ascii'))
+            elif cmd == 'get_frequency':
+                ser.write(b'FA;')
+                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                await websocket.send(json.dumps({'response': reply}))
+            elif cmd == 'get_mode':
+                ser.write(b'MD;')
+                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                await websocket.send(json.dumps({'response': reply}))
 
 async def main():
     global ser

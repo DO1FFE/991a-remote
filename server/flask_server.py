@@ -12,6 +12,7 @@ DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'secret'
+DEFAULT_REMOTE_SERVER = 'ws://911a.lima11.de:9001'
 
 SERIAL_PORT = DEFAULT_SERIAL_PORT
 SERIAL_BAUDRATE = DEFAULT_BAUDRATE
@@ -22,6 +23,8 @@ AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16
 CHANNELS = 1
 CHUNK = 1024
+INPUT_DEVICE_INDEX = None
+OUTPUT_DEVICE_INDEX = None
 
 app = Flask(__name__)
 DEFAULT_SECRET = 'change-me'
@@ -79,13 +82,22 @@ def command():
             if not value.endswith(';'):
                 value += ';'
             data = {'command': 'cat', 'data': value}
+        elif cmd == 'get_frequency':
+            data = {'command': 'get_frequency'}
+        elif cmd == 'get_mode':
+            data = {'command': 'get_mode'}
         else:
             return ('', 204)
 
         async def send():
             async with websockets.connect(REMOTE_SERVER) as ws:
                 await ws.send(json.dumps(data))
-        asyncio.run(send())
+                if cmd in ('get_frequency', 'get_mode'):
+                    return await ws.recv()
+            return None
+        resp = asyncio.run(send())
+        if resp is not None:
+            return resp
     else:
         if cmd == 'frequency':
             try:
@@ -107,15 +119,23 @@ def command():
             if not value.endswith(';'):
                 value += ';'
             ser.write(value.encode('ascii'))
+        elif cmd == 'get_frequency':
+            ser.write(b'FA;')
+            ser.readline()
+        elif cmd == 'get_mode':
+            ser.write(b'MD;')
+            ser.readline()
     return ('', 204)
 
 @sock.route('/ws/audio')
 def audio(ws):
     p = pyaudio.PyAudio()
     input_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                          input=True, frames_per_buffer=CHUNK)
+                          input=True, frames_per_buffer=CHUNK,
+                          input_device_index=INPUT_DEVICE_INDEX)
     output_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                           output=True, frames_per_buffer=CHUNK)
+                           output=True, frames_per_buffer=CHUNK,
+                           output_device_index=OUTPUT_DEVICE_INDEX)
     running = True
 
     def send_audio():
@@ -149,7 +169,8 @@ def main():
                         help='FT-991A serial port')
     parser.add_argument('--baudrate', type=int, default=DEFAULT_BAUDRATE,
                         help='Serial baud rate')
-    parser.add_argument('--server', help='Remote control server ws://host:port')
+    parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
+                        help='Remote control server ws://host:port')
     parser.add_argument('--username', default=DEFAULT_USERNAME,
                         help='Login username')
     parser.add_argument('--password', default=DEFAULT_PASSWORD,
@@ -158,6 +179,12 @@ def main():
                         help='Port for the web interface')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
                         help='Flask secret key')
+    parser.add_argument('--input-device', type=int, default=None,
+                        help='Audio input device index')
+    parser.add_argument('--output-device', type=int, default=None,
+                        help='Audio output device index')
+    parser.add_argument('--list-devices', action='store_true',
+                        help='List audio devices and exit')
     args = parser.parse_args()
 
     SERIAL_PORT = args.serial_port
@@ -165,6 +192,17 @@ def main():
     USERNAME = args.username
     PASSWORD = args.password
     app.secret_key = args.secret
+    global INPUT_DEVICE_INDEX, OUTPUT_DEVICE_INDEX
+    INPUT_DEVICE_INDEX = args.input_device
+    OUTPUT_DEVICE_INDEX = args.output_device
+
+    if args.list_devices:
+        p = pyaudio.PyAudio()
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            print(f"{i}: {info['name']}")
+        p.terminate()
+        return
 
     REMOTE_SERVER = args.server
     if REMOTE_SERVER:
