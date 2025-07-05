@@ -6,6 +6,7 @@ import json
 import os
 import websockets
 from flask import Flask, render_template, request, redirect, session, url_for
+import datetime
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyaudio
@@ -35,6 +36,7 @@ OPERATOR_LOCK = threading.Lock()
 app = Flask(__name__)
 DEFAULT_SECRET = 'change-me'
 app.secret_key = DEFAULT_SECRET
+CURRENT_YEAR = datetime.datetime.now().year
 
 sock = Sock(app)
 
@@ -130,7 +132,7 @@ def index():
         operator = OPERATORS.get(selected)
     return render_template('index.html', rigs=rigs, selected_rig=selected,
                            operator=operator, user=user, role=role,
-                           approved=approved)
+                           approved=approved, year=CURRENT_YEAR)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -146,8 +148,8 @@ def login():
             if user.get('needs_change'):
                 return redirect(url_for('change_credentials'))
             return redirect(url_for('index'))
-        return render_template('login.html', error='Invalid credentials')
-    return render_template('login.html')
+        return render_template('login.html', error='Invalid credentials', year=CURRENT_YEAR)
+    return render_template('login.html', year=CURRENT_YEAR)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -156,10 +158,10 @@ def register():
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
         if not username or not password:
-            return render_template('register.html', error='Invalid data')
+            return render_template('register.html', error='Invalid data', year=CURRENT_YEAR)
         with USERS_LOCK:
             if username in USERS:
-                return render_template('register.html', error='User exists')
+                return render_template('register.html', error='User exists', year=CURRENT_YEAR)
             USERS[username] = {
                 'password': generate_password_hash(password),
                 'role': 'operator',
@@ -168,8 +170,8 @@ def register():
                 'trx': False,
             }
             save_users()
-        return render_template('login.html', message='Registration successful. Await approval.')
-    return render_template('register.html')
+        return render_template('login.html', message='Registration successful. Await approval.', year=CURRENT_YEAR)
+    return render_template('register.html', year=CURRENT_YEAR)
 
 
 @app.route('/change_credentials', methods=['GET', 'POST'])
@@ -184,10 +186,10 @@ def change_credentials():
         new_username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
         if not new_username or not password:
-            return render_template('change_credentials.html', error='Invalid data')
+            return render_template('change_credentials.html', error='Invalid data', year=CURRENT_YEAR)
         with USERS_LOCK:
             if new_username != username and new_username in USERS:
-                return render_template('change_credentials.html', error='User exists')
+                return render_template('change_credentials.html', error='User exists', year=CURRENT_YEAR)
             user['password'] = generate_password_hash(password)
             user['needs_change'] = False
             if new_username != username:
@@ -196,7 +198,7 @@ def change_credentials():
                 session['user'] = new_username
         save_users()
         return redirect(url_for('index'))
-    return render_template('change_credentials.html', current=username)
+    return render_template('change_credentials.html', current=username, year=CURRENT_YEAR)
 
 
 @app.route('/admin/users', methods=['GET', 'POST'])
@@ -219,7 +221,7 @@ def admin_users():
                 elif action == 'remove_trx':
                     user['trx'] = False
                 save_users()
-    return render_template('userlist.html', users=USERS)
+    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR)
 
 @app.route('/logout')
 def logout():
