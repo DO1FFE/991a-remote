@@ -524,7 +524,7 @@ def main():
                         help='Serial baud rate')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
                         help='Remote control server ws://host:port')
-    parser.add_argument('--http-port', type=int, default=8000,
+    parser.add_argument('--http-port', type=int, default=8084,
                         help='Port for the web interface')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
                         help='Flask secret key')
