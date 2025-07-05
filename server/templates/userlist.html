@@ -6,12 +6,13 @@
 <body>
     <h1>User Administration</h1>
     <table border="1">
-        <tr><th>User</th><th>Role</th><th>Approved</th><th>Actions</th></tr>
+        <tr><th>User</th><th>Role</th><th>Approved</th><th>TRX</th><th>Actions</th></tr>
         {% for name, u in users.items() %}
         <tr>
             <td>{{ name }}</td>
             <td>{{ u.role }}</td>
             <td>{{ 'yes' if u.approved else 'no' }}</td>
+            <td>{{ 'yes' if u.trx else 'no' }}</td>
             <td>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
@@ -22,6 +23,16 @@
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="make_admin">
                     <button type="submit">Make Admin</button>
+                </form>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="username" value="{{ name }}">
+                    <input type="hidden" name="action" value="make_trx">
+                    <button type="submit">Make TRX</button>
+                </form>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="username" value="{{ name }}">
+                    <input type="hidden" name="action" value="remove_trx">
+                    <button type="submit">Remove TRX</button>
                 </form>
             </td>
         </tr>

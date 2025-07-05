@@ -14,9 +14,9 @@ ser = None
 ser_lock = asyncio.Lock()
 CALLSIGN = DEFAULT_CALLSIGN
 
-async def handle_client(websocket, announce=False):
-    if announce:
-        await websocket.send(json.dumps({'callsign': CALLSIGN}))
+async def handle_client(websocket, announce=None):
+    if announce is not None:
+        await websocket.send(json.dumps(announce))
     async for message in websocket:
         data = json.loads(message)
         cmd = data.get('command')
@@ -51,11 +51,11 @@ async def handle_client(websocket, announce=False):
                 reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
 
-async def client_loop(uri):
+async def client_loop(uri, handshake):
     while True:
         try:
             async with websockets.connect(uri) as ws:
-                await handle_client(ws, announce=True)
+                await handle_client(ws, announce=handshake)
         except Exception:
             await asyncio.sleep(5)
 
@@ -73,20 +73,35 @@ async def main():
                         help='Connect to ws://host:port/path instead of serving')
     parser.add_argument('--callsign', default=DEFAULT_CALLSIGN,
                         help='Station callsign to announce')
+    parser.add_argument('--username', default=None,
+                        help='Username for login')
+    parser.add_argument('--password', default=None,
+                        help='Password for login')
+    parser.add_argument('--mode', choices=['trx', 'operator'], default='trx',
+                        help='Login mode')
     args = parser.parse_args()
 
     global CALLSIGN
     CALLSIGN = args.callsign
-    ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
+    ser = None
+    if args.mode == 'trx':
+        ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
     try:
+        handshake = {'callsign': CALLSIGN}
+        if args.username and args.password:
+            handshake.update({'username': args.username,
+                              'password': args.password,
+                              'mode': args.mode})
         if args.connect:
-            await client_loop(args.connect)
+            await client_loop(args.connect, handshake)
         else:
             async with websockets.serve(
-                    lambda ws: handle_client(ws, True), '0.0.0.0', args.ws_port):
+                    lambda ws: handle_client(ws, {'callsign': CALLSIGN}),
+                    '0.0.0.0', args.ws_port):
                 await asyncio.Future()  # run forever
     finally:
-        ser.close()
+        if ser:
+            ser.close()
 
 if __name__ == '__main__':
     asyncio.run(main())
