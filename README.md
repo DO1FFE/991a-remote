@@ -10,6 +10,7 @@ und lauffähig unter Windows 11 (benötigt Python 3.9 oder neuer).
 - `server/audio_bridge.py`  – UDP Audio-Brücke (sendet Audio vom Funkgerät an den Client und umgekehrt).
 - `client/control_client.py` – Kommandozeilen-Client zur Steuerung des Geräts.
 - `client/audio_client.py`   – Audio-Client zur Sprachübertragung.
+- `client/gui_client.py`     – Einfache grafische Oberfläche zur Fernbedienung.
 - `requirements.txt`         – benötigte Python-Pakete.
 
 ## Installation
@@ -45,6 +46,22 @@ die IP des Clients setzen.
    python client/control_client.py --server <server-ip> --ptt on
    python client/control_client.py --server <server-ip> --ptt off
    ```
+Alternativ kann die grafische Oberfläche verwendet werden:
+   ```bash
+   python client/gui_client.py
+   ```
+
+### Erstellung einer Windows-EXE
+
+Die Clients lassen sich mit [PyInstaller](https://www.pyinstaller.org/) zu
+eigenständigen EXE-Dateien bundeln. Beispiel:
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile client/gui_client.py
+```
+
+Die erzeugte Datei befindet sich anschließend im Unterordner `dist`.
 
 Die Implementierung ist bewusst einfach gehalten und soll als Ausgangsbasis für eigene Erweiterungen dienen.
 
