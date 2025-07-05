@@ -27,6 +27,8 @@ INPUT_DEVICE_INDEX = None
 OUTPUT_DEVICE_INDEX = None
 RIGS = {}
 RIG_LOCK = threading.Lock()
+OPERATORS = {}
+OPERATOR_LOCK = threading.Lock()
 
 app = Flask(__name__)
 DEFAULT_SECRET = 'change-me'
@@ -69,19 +71,30 @@ def index():
     if selected not in rigs and rigs:
         selected = rigs[0]
         session['rig'] = selected
-    return render_template('index.html', rigs=rigs, selected_rig=selected)
+    user = session.get('user')
+    with OPERATOR_LOCK:
+        operator = OPERATORS.get(selected)
+    return render_template('index.html', rigs=rigs, selected_rig=selected,
+                           operator=operator, user=user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('username') == USERNAME and request.form.get('password') == PASSWORD:
+        if request.form.get('password') == PASSWORD:
             session['logged_in'] = True
+            session['user'] = request.form.get('username') or 'anonymous'
             return redirect(url_for('index'))
         return render_template('login.html', error='Invalid credentials')
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
+    user = session.pop('user', None)
+    rig = session.get('rig')
+    if user and rig:
+        with OPERATOR_LOCK:
+            if OPERATORS.get(rig) == user:
+                OPERATORS.pop(rig, None)
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
@@ -95,10 +108,40 @@ def select_rig():
             session['rig'] = rig
     return redirect(url_for('index'))
 
+@app.route('/take_control', methods=['POST'])
+def take_control():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    rig = session.get('rig')
+    user = session.get('user')
+    if rig and user:
+        with OPERATOR_LOCK:
+            if OPERATORS.get(rig) in (None, user):
+                OPERATORS[rig] = user
+    return redirect(url_for('index'))
+
+@app.route('/release_control', methods=['POST'])
+def release_control():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    rig = session.get('rig')
+    user = session.get('user')
+    if rig and user:
+        with OPERATOR_LOCK:
+            if OPERATORS.get(rig) == user:
+                OPERATORS.pop(rig, None)
+    return redirect(url_for('index'))
+
 @app.route('/command', methods=['POST'])
 def command():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    user = session.get('user')
+    rig = session.get('rig')
+    if rig:
+        with OPERATOR_LOCK:
+            if OPERATORS.get(rig) != user:
+                return ('', 403)
     cmd = request.form.get('cmd')
     value = request.form.get('value', '')
     if REMOTE_SERVER:
