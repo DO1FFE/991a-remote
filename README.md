@@ -5,7 +5,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 ## Aufbau
 
 - `server/flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
-- `server/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner; meldet sich mit einem frei wählbaren Rufzeichen
+ - `server/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner. Er meldet sich mit Benutzerdaten am Flask-Server an und kann wahlweise einen TRX bereitstellen oder als Operator verbinden.
 - `server/templates/` – HTML-Vorlagen für Login und Steuerungsseite
 - `requirements.txt` – benötigte Python-Pakete
 
@@ -23,15 +23,22 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 ### Server am Funkgerät (Windows)
 
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
-   eine Verbindung zum Flask‑Server aufbauen:
+   eine Verbindung zum Flask‑Server aufbauen. Dabei melden Sie sich mit Ihren Benutzerdaten an:
    ```bash
    python server/ft991a_ws_server.py --serial-port COM3 \
        --connect ws://991a.lima11.de:8000/ws/rig \
-       --callsign MYCALL
+       --callsign MYCALL --username MYCALL --password secret --mode trx
    ```
-   Der COM‑Port ist ggf. anzupassen.
-   Das Rufzeichen wird an den Flask‑Server übertragen. Verbinden sich mehrere
-   Stationen, kann auf der Weboberfläche eine davon ausgewählt werden.
+   Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, kann auf der Weboberfläche eine davon ausgewählt werden.
+
+### Nutzung als Operator
+
+Möchten Sie mit dem Programm selbst einen entfernten TRX bedienen, starten Sie es ohne serielle Schnittstelle und melden sich als Operator an:
+
+```bash
+python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8000/ws/rig \
+    --username MYCALL --password secret --mode operator
+```
 
 ### Flask‑Server auf dem Client (Linux)
 

@@ -46,6 +46,9 @@ def load_users():
     if os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'r', encoding='utf-8') as f:
             USERS = json.load(f)
+        for u in USERS.values():
+            if 'trx' not in u:
+                u['trx'] = False
     else:
         USERS = {
             'admin': {
@@ -53,6 +56,7 @@ def load_users():
                 'role': 'admin',
                 'approved': True,
                 'needs_change': True,
+                'trx': False,
             }
         }
         save_users()
@@ -69,24 +73,45 @@ load_users()
 def rig(ws):
     first = ws.receive()
     callsign = None
+    username = None
+    password = None
+    mode = 'trx'
     try:
         data = json.loads(first)
         callsign = data.get('callsign')
+        username = data.get('username')
+        password = data.get('password')
+        mode = data.get('mode', 'trx')
     except Exception:
-        pass
+        ws.close()
+        return
+    if not username or not password:
+        ws.close()
+        return
+    with USERS_LOCK:
+        user = USERS.get(username)
+    if not user or not check_password_hash(user['password'], password):
+        ws.close()
+        return
+    if mode == 'trx' and not user.get('trx'):
+        ws.close()
+        return
     if not callsign:
-        callsign = f'rig_{id(ws)}'
-    with RIG_LOCK:
-        RIGS[callsign] = ws
+        callsign = username if mode == 'trx' else f'op_{username}'
+
+    if mode == 'trx':
+        with RIG_LOCK:
+            RIGS[callsign] = ws
     try:
         while True:
             msg = ws.receive()
             if msg is None:
                 break
     finally:
-        with RIG_LOCK:
-            if RIGS.get(callsign) is ws:
-                del RIGS[callsign]
+        if mode == 'trx':
+            with RIG_LOCK:
+                if RIGS.get(callsign) is ws:
+                    del RIGS[callsign]
 
 @app.route('/')
 def index():
@@ -140,6 +165,7 @@ def register():
                 'role': 'operator',
                 'approved': False,
                 'needs_change': False,
+                'trx': False,
             }
             save_users()
         return render_template('login.html', message='Registration successful. Await approval.')
@@ -188,6 +214,10 @@ def admin_users():
                 elif action == 'make_admin':
                     user['role'] = 'admin'
                     user['approved'] = True
+                elif action == 'make_trx':
+                    user['trx'] = True
+                elif action == 'remove_trx':
+                    user['trx'] = False
                 save_users()
     return render_template('userlist.html', users=USERS)
 
