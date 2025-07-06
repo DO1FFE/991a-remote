@@ -34,7 +34,7 @@
                 <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                     <input type="hidden" name="cmd" value="mode">
                     <input type="hidden" name="value" value="0">
-                    <button type="submit" class="mode-btn">MODE</button>
+                    <button type="submit" class="mode-btn">Modus</button>
                 </form>
                 <form method="post" action="{{ url_for('command') }}" class="bandForm cmdForm">
                     <select name="value">
@@ -45,7 +45,7 @@
                         <option value="28000000">10m</option>
                     </select>
                     <input type="hidden" name="cmd" value="frequency">
-                    <button type="submit">BAND</button>
+                    <button type="submit">Band</button>
                 </form>
             </div>
         </div>
@@ -121,7 +121,7 @@
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Modus</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <label>Shift:
+                <label>Ablage:
                     <select name="value" {{ 'disabled' if controls_disabled else '' }}>
                         <option value="0">Simplex</option>
                         <option value="1">+</option>
@@ -129,17 +129,17 @@
                     </select>
                 </label>
                 <input type="hidden" name="cmd" value="shift">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Shift</button>
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Ablage</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>Offset (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
                 <input type="hidden" name="cmd" value="offset">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Offset</button>
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Offset setzen</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>CTCSS:
                     <select name="value" {{ 'disabled' if controls_disabled else '' }}>
-                        <option value="0">OFF</option>
+                        <option value="0">Aus</option>
                         <option value="67.0">67.0</option>
                         <option value="69.3">69.3</option>
                         <option value="71.9">71.9</option>
@@ -198,7 +198,7 @@
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>DCS-Code:
                     <select name="value" {{ 'disabled' if controls_disabled else '' }}>
-                        <option value="0">OFF</option>
+                        <option value="0">Aus</option>
                         <option value="023">023</option>
                         <option value="025">025</option>
                         <option value="026">026</option>
@@ -309,15 +309,15 @@
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>DCS</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <label>MIC Gain: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <label>Mikrofonpegel: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
                 <input type="hidden" name="cmd" value="mic_gain">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>MIC Gain</button>
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Mikrofonpegel</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>Encoder:
                     <select name="value" {{ 'disabled' if controls_disabled else '' }}>
-                        <option value="up">Up</option>
-                        <option value="down">Down</option>
+                        <option value="up">Hoch</option>
+                        <option value="down">Runter</option>
                     </select>
                 </label>
                 <input type="hidden" name="cmd" value="encoder">
