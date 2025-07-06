@@ -831,10 +831,16 @@ def audio(ws):
                 msg = ws.receive()
                 if msg is None:
                     break
-                try:
-                    rig_ws.send(msg)
-                except Exception:
-                    break
+                allow = False
+                user = session.get('user')
+                if rig and user:
+                    with OPERATOR_LOCK:
+                        allow = OPERATORS.get(rig) == user
+                if allow:
+                    try:
+                        rig_ws.send(msg)
+                    except Exception:
+                        break
         finally:
             with AUDIO_CLIENTS_LOCK:
                 AUDIO_CLIENTS.get(rig, set()).discard(ws)
