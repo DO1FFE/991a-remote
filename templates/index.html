@@ -52,7 +52,7 @@
         {% if not approved and role != 'admin' %}
         <p class="warn">Freischaltung ausstehend. Nur Empfang m&ouml;glich.</p>
         {% endif %}
-        <div class="rig-select">
+        <div class="rig-select" id="rig-select">
             <form method="post" action="{{ url_for('select_rig') }}" class="cmdForm">
                 <label>Ger&auml;t:
                     <select name="rig" {% if not rigs %}disabled{% endif %}>
@@ -64,9 +64,9 @@
                 <button type="submit" {% if not rigs %}disabled{% endif %}>Ausw&auml;hlen</button>
             </form>
             {% if not rigs %}
-            <p>Hinweis: Kein TRX verbunden.</p>
+            <p id="no-rig-msg">Hinweis: Kein TRX verbunden.</p>
             {% endif %}
-            <p>Bediener:
+            <p id="operator-info">Bediener:
                 {% if operator %}
                     {{ operator }} ({{ operator_status or 'Unbekannt' }})
                 {% else %}
@@ -503,6 +503,43 @@ async function ping(){
                 p.textContent='Online: '+users.map(u=>`${u[0]} (${u[1]!==null?Math.floor(u[1])+' ms':'-'})`).join(', ');
             }else{
                 p.textContent='Online: keiner';
+            }
+        }
+        const infoRes = await fetch('{{ url_for('status_info') }}', {credentials:'same-origin'});
+        const info = await infoRes.json();
+        const rigSel = document.querySelector('#rig-select select[name="rig"]');
+        if(rigSel){
+            rigSel.innerHTML = '';
+            info.rigs.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                if(r === info.selected) opt.selected = true;
+                rigSel.appendChild(opt);
+            });
+            const btn = rigSel.form.querySelector('button');
+            if(info.rigs.length){
+                rigSel.disabled = false;
+                if(btn) btn.disabled = false;
+                const msg = document.getElementById('no-rig-msg');
+                if(msg) msg.remove();
+            }else{
+                rigSel.disabled = true;
+                if(btn) btn.disabled = true;
+                if(!document.getElementById('no-rig-msg')){
+                    const pmsg = document.createElement('p');
+                    pmsg.id = 'no-rig-msg';
+                    pmsg.textContent = 'Hinweis: Kein TRX verbunden.';
+                    document.getElementById('rig-select').insertBefore(pmsg, rigSel.form.nextSibling);
+                }
+            }
+        }
+        const op = document.getElementById('operator-info');
+        if(op){
+            if(info.operator){
+                op.textContent = `Bediener: ${info.operator} (${info.operator_status || 'Unbekannt'})`;
+            }else{
+                op.textContent = 'Bediener: keiner';
             }
         }
     }catch(e){}
