@@ -429,6 +429,12 @@ def command():
                 data = {'command': 'cat', 'data': f'DS{code:03d};'}
             except ValueError:
                 return ('', 204)
+        elif cmd == 'encoder':
+            if value in ('up', 'EU', 'down', 'ED'):
+                code = 'EU' if value in ('up', 'EU') else 'ED'
+                data = {'command': 'cat', 'data': f'{code};'}
+            else:
+                return ('', 204)
         elif cmd == 'mic_gain':
             try:
                 gain = int(value)
@@ -507,6 +513,12 @@ def command():
                 code = int(value)
                 data = {'command': 'cat', 'data': f'DS{code:03d};'}
             except ValueError:
+                return ('', 204)
+        elif cmd == 'encoder':
+            if value in ('up', 'EU', 'down', 'ED'):
+                code = 'EU' if value in ('up', 'EU') else 'ED'
+                data = {'command': 'cat', 'data': f'{code};'}
+            else:
                 return ('', 204)
         elif cmd == 'mic_gain':
             try:
