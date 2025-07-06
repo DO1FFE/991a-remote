@@ -47,6 +47,10 @@ RIGS = {}
 RIG_LOCK = threading.Lock()
 OPERATORS = {}
 OPERATOR_LOCK = threading.Lock()
+RIG_VALUES = {}
+VALUES_LOCK = threading.Lock()
+STATUS_CLIENTS = set()
+STATUS_LOCK = threading.Lock()
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -59,6 +63,18 @@ CURRENT_YEAR = datetime.datetime.now().year
 sock = Sock(app)
 
 ser = None
+
+def broadcast(update):
+    data = json.dumps(update)
+    remove = []
+    with STATUS_LOCK:
+        for ws in list(STATUS_CLIENTS):
+            try:
+                ws.send(data)
+            except Exception:
+                remove.append(ws)
+        for ws in remove:
+            STATUS_CLIENTS.discard(ws)
 
 
 def load_users():
@@ -128,11 +144,24 @@ def rig(ws):
             msg = ws.receive()
             if msg is None:
                 break
+            if mode == 'trx':
+                try:
+                    data = json.loads(msg)
+                except Exception:
+                    continue
+                values = data.get('values')
+                if values:
+                    with VALUES_LOCK:
+                        cur = RIG_VALUES.setdefault(callsign, {})
+                        cur.update(values)
+                    broadcast({'rig': callsign, 'values': values})
     finally:
         if mode == 'trx':
             with RIG_LOCK:
                 if RIGS.get(callsign) is ws:
                     del RIGS[callsign]
+            with VALUES_LOCK:
+                RIG_VALUES.pop(callsign, None)
 
 @app.route('/')
 def index():
@@ -597,6 +626,25 @@ def audio(ws):
         input_stream.close()
         output_stream.close()
         p.terminate()
+
+@sock.route('/ws/status')
+def status(ws):
+    with STATUS_LOCK:
+        STATUS_CLIENTS.add(ws)
+    with VALUES_LOCK:
+        for rig, vals in RIG_VALUES.items():
+            try:
+                ws.send(json.dumps({'rig': rig, 'values': vals}))
+            except Exception:
+                pass
+    try:
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+    finally:
+        with STATUS_LOCK:
+            STATUS_CLIENTS.discard(ws)
 
 def main():
     global SERIAL_PORT, SERIAL_BAUDRATE, ser, REMOTE_SERVER
