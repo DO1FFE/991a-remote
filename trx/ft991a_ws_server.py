@@ -32,6 +32,7 @@ CALLSIGN = DEFAULT_CALLSIGN
 SERIAL_POLLING = 0.2  # seconds
 LAST_FREQUENCY = None
 LAST_VALUES = {}
+MEMORY_CHANNELS = []
 
 
 def load_poll_commands():
@@ -53,6 +54,23 @@ def load_poll_commands():
         logger.warning('CAT command summary not found, using minimal set')
         commands = [b'FA;', b'MD;', b'SM;']
     return commands
+
+
+async def read_memory_channels():
+    """Read all memory channels once and return list of indices that are used."""
+    memories = []
+    if ser is None:
+        return memories
+    try:
+        async with ser_lock:
+            for i in range(125):
+                ser.write(f'MR{i:03d};'.encode('ascii'))
+                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                if reply and any(ch != '0' for ch in reply):
+                    memories.append(i)
+    except Exception:
+        logger.exception('Failed to read memories')
+    return memories
 
 
 POLL_COMMANDS = load_poll_commands()
@@ -89,6 +107,10 @@ async def poll_trx(send_func=None):
 async def handle_client(websocket, announce=None, send_updates=False):
     if announce is not None:
         await websocket.send(json.dumps(announce))
+    if ser:
+        memories = await read_memory_channels()
+        if memories:
+            await websocket.send(json.dumps({'memory_channels': memories}))
     poll_task = None
     ping_task = None
     if ser and send_updates:

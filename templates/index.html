@@ -89,6 +89,22 @@
                 {% endif %}
             {% endif %}
         </div>
+        <div class="memory-select" id="memory-select">
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Speicher:
+                    <select name="value" {% if not memories %}disabled{% endif %}>
+                    {% for m in memories %}
+                        <option value="{{ m }}">{{ m }}</option>
+                    {% endfor %}
+                    </select>
+                </label>
+                <input type="hidden" name="cmd" value="memory_channel">
+                <button type="submit" {% if not memories %}disabled{% endif %}>Abrufen</button>
+            </form>
+            {% if not memories %}
+            <p id="no-memory-msg">Keine Speicher belegt.</p>
+            {% endif %}
+        </div>
         {% if (role == 'admin' or approved) %}
         {% set controls_disabled = (not rigs) or operator != user %}
         <div class="control-grid">
@@ -432,6 +448,34 @@ function startStatus(){
                 if(v.RTT!==undefined){
                     document.querySelector('.rtt-display').textContent = 'RTT: '+v.RTT+' ms';
                 }
+                if(data.memories){
+                    const memSel=document.querySelector('#memory-select select[name="value"]');
+                    if(memSel){
+                        memSel.innerHTML='';
+                        data.memories.forEach(m=>{
+                            const opt=document.createElement('option');
+                            opt.value=m;
+                            opt.textContent=m;
+                            memSel.appendChild(opt);
+                        });
+                        const btn=memSel.form.querySelector('button');
+                        if(data.memories.length){
+                            memSel.disabled=false;
+                            if(btn) btn.disabled=false;
+                            const msg=document.getElementById('no-memory-msg');
+                            if(msg) msg.remove();
+                        }else{
+                            memSel.disabled=true;
+                            if(btn) btn.disabled=true;
+                            if(!document.getElementById('no-memory-msg')){
+                                const pmsg=document.createElement('p');
+                                pmsg.id='no-memory-msg';
+                                pmsg.textContent='Keine Speicher belegt.';
+                                document.getElementById('memory-select').appendChild(pmsg);
+                            }
+                        }
+                    }
+                }
             }catch(err){}
         };
     }
@@ -548,6 +592,32 @@ async function ping(){
                     pmsg.id = 'no-rig-msg';
                     pmsg.textContent = 'Hinweis: Kein TRX verbunden.';
                     document.getElementById('rig-select').insertBefore(pmsg, rigSel.form.nextSibling);
+                }
+            }
+        }
+        const memSel = document.querySelector('#memory-select select[name="value"]');
+        if(memSel){
+            memSel.innerHTML = '';
+            info.memories.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                memSel.appendChild(opt);
+            });
+            const btn = memSel.form.querySelector('button');
+            if(info.memories.length){
+                memSel.disabled = false;
+                if(btn) btn.disabled = false;
+                const msg = document.getElementById('no-memory-msg');
+                if(msg) msg.remove();
+            }else{
+                memSel.disabled = true;
+                if(btn) btn.disabled = true;
+                if(!document.getElementById('no-memory-msg')){
+                    const pmsg = document.createElement('p');
+                    pmsg.id = 'no-memory-msg';
+                    pmsg.textContent = 'Keine Speicher belegt.';
+                    document.getElementById('memory-select').appendChild(pmsg);
                 }
             }
         }
