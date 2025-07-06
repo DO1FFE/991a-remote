@@ -91,9 +91,23 @@ async def handle_client(websocket, announce=None, send_updates=False):
     if announce is not None:
         await websocket.send(json.dumps(announce))
     poll_task = None
+    ping_task = None
     if ser and send_updates:
         poll_task = asyncio.create_task(
             poll_trx(lambda vals: websocket.send(json.dumps({'values': vals}))))
+    async def ping_loop():
+        while True:
+            try:
+                start = asyncio.get_event_loop().time()
+                pong = await websocket.ping()
+                await pong
+                rtt = int((asyncio.get_event_loop().time() - start) * 1000)
+                await websocket.send(json.dumps({'values': {'RTT': rtt}}))
+            except Exception:
+                logger.exception('Ping failed')
+                break
+            await asyncio.sleep(5)
+    ping_task = asyncio.create_task(ping_loop())
     try:
         async for message in websocket:
             data = json.loads(message)
@@ -142,6 +156,9 @@ async def handle_client(websocket, announce=None, send_updates=False):
         if poll_task:
             poll_task.cancel()
             await asyncio.gather(poll_task, return_exceptions=True)
+        if ping_task:
+            ping_task.cancel()
+            await asyncio.gather(ping_task, return_exceptions=True)
 
 async def client_loop(uri, handshake):
     while True:
