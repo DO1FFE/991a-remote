@@ -30,6 +30,52 @@ logger = logging.getLogger(__name__)
 ser = None
 ser_lock = asyncio.Lock()
 CALLSIGN = DEFAULT_CALLSIGN
+SERIAL_POLLING = 0.2  # seconds
+LAST_FREQUENCY = None
+LAST_VALUES = {}
+
+
+def load_poll_commands():
+    """Load CAT commands that allow reading or answering."""
+    commands = []
+    summary = os.path.join(BASE_DIR, '..', 'docs', 'cat_commands_summary.md')
+    try:
+        with open(summary, 'r', encoding='utf-8') as f:
+            for line in f:
+                if not line.startswith('|') or line.startswith('|-'):
+                    continue
+                parts = [p.strip() for p in line.split('|')]
+                if len(parts) < 6 or parts[1] == 'Command':
+                    continue
+                cmd, read, ans = parts[1], parts[4], parts[5]
+                if (read == 'O' or ans == 'O') and len(cmd) == 2:
+                    commands.append(f'{cmd};'.encode('ascii'))
+    except FileNotFoundError:
+        logger.warning('CAT command summary not found, using minimal set')
+        commands = [b'FA;', b'MD;', b'SM;']
+    return commands
+
+
+POLL_COMMANDS = load_poll_commands()
+
+async def poll_trx():
+    """Poll the transceiver for various CAT values."""
+    global LAST_FREQUENCY, LAST_VALUES
+    while True:
+        await asyncio.sleep(SERIAL_POLLING)
+        if ser is None:
+            continue
+        try:
+            async with ser_lock:
+                for cmd in POLL_COMMANDS:
+                    ser.write(cmd)
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
+                    if reply:
+                        LAST_VALUES[cmd.decode('ascii').strip(';')] = reply
+                        if cmd == b'FA;':
+                            LAST_FREQUENCY = reply
+        except Exception:
+            logger.exception('Polling error')
 
 async def handle_client(websocket, announce=None):
     if announce is not None:
@@ -60,16 +106,22 @@ async def handle_client(websocket, announce=None):
                     value += ';'
                 ser.write(value.encode('ascii'))
             elif cmd == 'get_frequency':
-                ser.write(b'FA;')
-                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                reply = LAST_VALUES.get('FA', LAST_FREQUENCY)
+                if reply is None:
+                    ser.write(b'FA;')
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
             elif cmd == 'get_mode':
-                ser.write(b'MD;')
-                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                reply = LAST_VALUES.get('MD')
+                if reply is None:
+                    ser.write(b'MD;')
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
             elif cmd == 'get_smeter':
-                ser.write(b'SM;')
-                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                reply = LAST_VALUES.get('SM')
+                if reply is None:
+                    ser.write(b'SM;')
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
 
 async def client_loop(uri, handshake):
@@ -113,6 +165,9 @@ async def main():
             print('Hinweis: Kein TRX verbunden.', flush=True)
             return
     try:
+        poll_task = None
+        if ser:
+            poll_task = asyncio.create_task(poll_trx())
         handshake = {'callsign': CALLSIGN}
         if args.username and args.password:
             handshake.update({'username': args.username,
@@ -126,6 +181,9 @@ async def main():
                     '0.0.0.0', args.ws_port):
                 await asyncio.Future()  # run forever
     finally:
+        if poll_task:
+            poll_task.cancel()
+            await asyncio.gather(poll_task, return_exceptions=True)
         if ser:
             ser.close()
 
