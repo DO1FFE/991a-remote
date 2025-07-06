@@ -6,6 +6,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 - `flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
 - `trx/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner. Er meldet sich mit Benutzerdaten am Flask-Server an und kann wahlweise einen TRX bereitstellen oder als Operator verbinden.
+- `trx/trx_gui.py` – kleine Tkinter-Oberfläche zum Start des Dienstes mit gespeicherten Zugangsdaten.
 - `templates/` – HTML-Vorlagen für Login und Steuerungsseite
 - `requirements.txt` – benötigte Python-Pakete
 
@@ -25,12 +26,16 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
    eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch über
    `wss://991a.lima11.de:8084/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
-  ```bash
-  python trx/ft991a_ws_server.py --serial-port COM3 \
+ ```bash
+ python trx/ft991a_ws_server.py --serial-port COM3 \
       --callsign MYCALL --username MYCALL --password secret \
       --server wss://991a.lima11.de:8084/ws/rig
-  ```
-   Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
+ ```
+ Alternativ kann `python trx/trx_gui.py` verwendet werden. Die Oberfläche
+ speichert Zugangsdaten sowie Audio- und COM-Port-Auswahl und startet den
+ Dienst nach Klick auf **START**. In einem kleinen Fenster werden dabei nur
+ die Nutzer angezeigt, die gerade diesen TRX verwenden.
+  Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
 
 ### Nutzung als Operator
 

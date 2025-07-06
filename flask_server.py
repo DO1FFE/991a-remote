@@ -56,6 +56,8 @@ ACTIVE_LOCK = threading.Lock()
 USER_RTT = {}
 ACTIVE_WS_CLIENTS = set()
 ACTIVE_WS_LOCK = threading.Lock()
+USER_RIG = {}
+USER_RIG_LOCK = threading.Lock()
 
 GERMAN_PREFIXES = (
     'DA', 'DB', 'DC', 'DD', 'DF', 'DG', 'DH', 'DJ',
@@ -98,7 +100,8 @@ def broadcast_active_users():
         users = []
         for u, ts in list(ACTIVE_USERS.items()):
             if now - ts < 10:
-                users.append((u, USER_RTT.get(u)))
+                with USER_RIG_LOCK:
+                    users.append((u, USER_RTT.get(u), USER_RIG.get(u)))
             else:
                 del ACTIVE_USERS[u]
                 USER_RTT.pop(u, None)
@@ -211,6 +214,9 @@ def index():
         selected = rigs[0]
         session['rig'] = selected
     user = session.get('user')
+    if user:
+        with USER_RIG_LOCK:
+            USER_RIG[user] = selected
     role = session.get('role')
     approved = session.get('approved')
     unapproved_count = 0
@@ -436,6 +442,8 @@ def logout():
         with OPERATOR_LOCK:
             if OPERATORS.get(rig) == user:
                 OPERATORS.pop(rig, None)
+        with USER_RIG_LOCK:
+            USER_RIG.pop(user, None)
     session.pop('logged_in', None)
     session.pop('role', None)
     session.pop('approved', None)
@@ -449,6 +457,10 @@ def select_rig():
     with RIG_LOCK:
         if rig in RIGS:
             session['rig'] = rig
+            user = session.get('user')
+            if user:
+                with USER_RIG_LOCK:
+                    USER_RIG[user] = rig
     return redirect(url_for('index'))
 
 @app.route('/take_control', methods=['POST'])
@@ -494,6 +506,10 @@ def heartbeat():
         ACTIVE_USERS[user] = time.time()
         if rtt is not None:
             USER_RTT[user] = rtt
+    rig = session.get('rig')
+    if rig:
+        with USER_RIG_LOCK:
+            USER_RIG[user] = rig
     broadcast_active_users()
     return ('', 204)
 
@@ -508,7 +524,8 @@ def active_users_api():
         users = []
         for u, ts in list(ACTIVE_USERS.items()):
             if now - ts < 10:
-                users.append((u, USER_RTT.get(u)))
+                with USER_RIG_LOCK:
+                    users.append((u, USER_RTT.get(u), USER_RIG.get(u)))
             else:
                 del ACTIVE_USERS[u]
                 USER_RTT.pop(u, None)
@@ -524,6 +541,10 @@ def status_info():
     if selected not in rigs and rigs:
         selected = rigs[0]
         session['rig'] = selected
+    user = session.get('user')
+    if user:
+        with USER_RIG_LOCK:
+            USER_RIG[user] = selected
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
     operator_status = None
@@ -789,7 +810,8 @@ def active_users_ws(ws):
         users = []
         for u, ts in list(ACTIVE_USERS.items()):
             if now - ts < 10:
-                users.append((u, USER_RTT.get(u)))
+                with USER_RIG_LOCK:
+                    users.append((u, USER_RTT.get(u), USER_RIG.get(u)))
     try:
         ws.send(json.dumps({'active_users': users}))
         while True:

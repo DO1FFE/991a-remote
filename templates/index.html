@@ -455,7 +455,11 @@ function startActiveUsers(){
                 const data=JSON.parse(e.data);
                 const users=data.active_users||[];
                 if(users.length){
-                    p.textContent='Online: '+users.map(u=>`${u[0]} (${u[1]!==null?Math.floor(u[1])+' ms':'-'})`).join(', ');
+                    p.textContent='Online: '+users.map(u=>{
+                        const name=u[0];
+                        const rtt=u[1];
+                        return `${name} (${rtt!==null?Math.floor(rtt)+' ms':'-'})`;
+                    }).join(', ');
                 }else{
                     p.textContent='Online: keiner';
                 }
