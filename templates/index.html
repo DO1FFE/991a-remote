@@ -6,133 +6,151 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="container radio-case">
-<header class="radio-display">
-    <div class="display-row">
+<div class="container radio-case ft991a">
+    <header class="rig-header">
         <h1>FT-991A</h1>
         <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
-    </div>
-    <div class="freq-display">14.074.000</div>
-</header>
-    <p>Angemeldet als {{ user }} ({{ role }})</p>
-<main class="controls">
-    <section class="controls-info">
-        <h2>Wichtige Bedienelemente am FT-991A</h2>
-        <ul>
-            <li><strong>VFO-Drehregler</strong> zum Einstellen der Frequenz</li>
-            <li><strong>Tastatur/Touchscreen</strong> zur direkten Eingabe</li>
-            <li><strong>MODE-Taste</strong> f&uuml;r SSB, FM, AM usw.</li>
-            <li><strong>PTT am Mikrofon</strong> f&uuml;r den Sendebetrieb</li>
-            <li><strong>Men&uuml;optionen</strong> f&uuml;r Shift, Offset und CTCSS/DCS</li>
-            <li><strong>MIC-Gain-Regler</strong> zur Pegelanpassung</li>
-        </ul>
-    </section>
-    {% if not approved and role != 'admin' %}
-    <p style="color:orange;">Freischaltung ausstehend. Nur Empfang m&ouml;glich.</p>
-    {% endif %}
-<form method="post" action="{{ url_for('select_rig') }}">
-    <label>Ger&auml;t:
-        <select name="rig" {% if not rigs %}disabled{% endif %}>
-        {% for r in rigs %}
-            <option value="{{ r }}" {% if r==selected_rig %}selected{% endif %}>{{ r }}</option>
-        {% endfor %}
-        </select>
-    </label>
-    <button type="submit" {% if not rigs %}disabled{% endif %}>Ausw&auml;hlen</button>
-</form>
-{% if not rigs %}
-<p>Hinweis: Kein TRX verbunden.</p>
-{% endif %}
-<p>Bediener:
-    {% if operator %}
-        {{ operator }} ({{ operator_status or 'Unbekannt' }})
-    {% else %}
-        keiner
-    {% endif %}
-</p>
-{% if role == 'admin' or approved %}
-    {% if operator == user %}
-    <form method="post" action="{{ url_for('release_control') }}">
-        <button type="submit">Steuerung abgeben</button>
-    </form>
-    {% elif not operator %}
-    <form method="post" action="{{ url_for('take_control') }}">
-        <button type="submit" {% if not rigs %}disabled{% endif %}>Steuerung &uuml;bernehmen</button>
-    </form>
-    {% else %}
-    <form method="post" action="{{ url_for('take_control') }}">
-        <button type="submit" disabled>Steuerung &uuml;bernehmen</button>
-    </form>
-    {% endif %}
-{% endif %}
-    {% if (role == 'admin' or approved) %}
-    {% set controls_disabled = (not rigs) or operator != user %}
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>Frequenz (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="frequency">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Frequenz setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>Modus-Nr.: <input type="text" name="value"></label>
-        <input type="hidden" name="cmd" value="mode">
-        <button type="submit">Modus setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>Shift:
-            <select name="value" {{ 'disabled' if controls_disabled else '' }}>
-                <option value="0">Simplex</option>
-                <option value="1">-</option>
-                <option value="2">+</option>
-            </select>
-        </label>
-        <input type="hidden" name="cmd" value="shift">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Shift setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>Offset (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="offset">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Offset setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>CTCSS (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="ctcss">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>CTCSS setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>DCS-Code: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="dcs">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>DCS setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <label>MIC Gain: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="mic_gain">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>MIC Gain setzen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <input type="hidden" name="cmd" value="ptt_on">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT EIN</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <input type="hidden" name="cmd" value="ptt_off">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT AUS</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <input type="hidden" name="cmd" value="get_frequency">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Frequenz lesen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-        <input type="hidden" name="cmd" value="get_mode">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Modus lesen</button>
-    </form>
-    <form method="post" action="{{ url_for('command') }}">
-        <label>CAT-Befehl: <input type="text" name="value" placeholder="EX;" {{ 'disabled' if controls_disabled else '' }}></label>
-        <input type="hidden" name="cmd" value="cat">
-        <button type="submit" {{ 'disabled' if controls_disabled else '' }}>CAT senden</button>
-    </form>
-    {% endif %}
-    <button onclick="startAudio()">Audio starten</button>
-    <button onclick="stopAudio()">Audio stoppen</button>
-</main>
+    </header>
+    <p class="user-info">Angemeldet als {{ user }} ({{ role }})</p>
+    <main>
+        <div class="front-panel">
+            <div class="screen">
+                <div class="freq-display">14.074.000</div>
+            </div>
+            <div class="vfo">
+                <div class="vfo-knob"></div>
+            </div>
+            <div class="buttons">
+                <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                    <input type="hidden" name="cmd" value="mode">
+                    <input type="hidden" name="value" value="0">
+                    <button type="submit" class="mode-btn">MODE</button>
+                </form>
+                <form method="post" action="{{ url_for('command') }}" class="bandForm cmdForm">
+                    <select name="value">
+                        <option value="3500000">80m</option>
+                        <option value="7000000">40m</option>
+                        <option value="14000000" selected>20m</option>
+                        <option value="21000000">15m</option>
+                        <option value="28000000">10m</option>
+                    </select>
+                    <input type="hidden" name="cmd" value="frequency">
+                    <button type="submit">BAND</button>
+                </form>
+            </div>
+        </div>
+        {% if not approved and role != 'admin' %}
+        <p class="warn">Freischaltung ausstehend. Nur Empfang m&ouml;glich.</p>
+        {% endif %}
+        <div class="rig-select">
+            <form method="post" action="{{ url_for('select_rig') }}" class="cmdForm">
+                <label>Ger&auml;t:
+                    <select name="rig" {% if not rigs %}disabled{% endif %}>
+                    {% for r in rigs %}
+                        <option value="{{ r }}" {% if r==selected_rig %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" {% if not rigs %}disabled{% endif %}>Ausw&auml;hlen</button>
+            </form>
+            {% if not rigs %}
+            <p>Hinweis: Kein TRX verbunden.</p>
+            {% endif %}
+            <p>Bediener:
+                {% if operator %}
+                    {{ operator }} ({{ operator_status or 'Unbekannt' }})
+                {% else %}
+                    keiner
+                {% endif %}
+            </p>
+            {% if role == 'admin' or approved %}
+                {% if operator == user %}
+                <form method="post" action="{{ url_for('release_control') }}" class="cmdForm">
+                    <button type="submit">Steuerung abgeben</button>
+                </form>
+                {% elif not operator %}
+                <form method="post" action="{{ url_for('take_control') }}" class="cmdForm">
+                    <button type="submit" {% if not rigs %}disabled{% endif %}>Steuerung &uuml;bernehmen</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('take_control') }}" class="cmdForm">
+                    <button type="submit" disabled>Steuerung &uuml;bernehmen</button>
+                </form>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% if (role == 'admin' or approved) %}
+        {% set controls_disabled = (not rigs) or operator != user %}
+        <div class="control-grid">
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Frequenz (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="frequency">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Setzen</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Modus-Nr.: <input type="text" name="value"></label>
+                <input type="hidden" name="cmd" value="mode">
+                <button type="submit">Modus</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Shift:
+                    <select name="value" {{ 'disabled' if controls_disabled else '' }}>
+                        <option value="0">Simplex</option>
+                        <option value="1">-</option>
+                        <option value="2">+</option>
+                    </select>
+                </label>
+                <input type="hidden" name="cmd" value="shift">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Shift</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Offset (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="offset">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Offset</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>CTCSS (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="ctcss">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>CTCSS</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>DCS-Code: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="dcs">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>DCS</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>MIC Gain: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="mic_gain">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>MIC Gain</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="ptt_on">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT EIN</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="ptt_off">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT AUS</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="get_frequency">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Frequenz lesen</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="get_mode">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Modus lesen</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>CAT-Befehl: <input type="text" name="value" placeholder="EX;" {{ 'disabled' if controls_disabled else '' }}></label>
+                <input type="hidden" name="cmd" value="cat">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>CAT senden</button>
+            </form>
+        </div>
+        {% endif %}
+        <div class="audio-controls">
+            <button onclick="startAudio()">Audio starten</button>
+            <button onclick="stopAudio()">Audio stoppen</button>
+        </div>
+    </main>
     <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
 </div>
 <script>
