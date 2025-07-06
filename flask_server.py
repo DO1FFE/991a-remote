@@ -49,6 +49,8 @@ OPERATORS = {}
 OPERATOR_LOCK = threading.Lock()
 RIG_VALUES = {}
 VALUES_LOCK = threading.Lock()
+RIG_MEMORIES = {}
+MEMORY_LOCK = threading.Lock()
 STATUS_CLIENTS = set()
 STATUS_LOCK = threading.Lock()
 ACTIVE_USERS = {}
@@ -195,6 +197,11 @@ def rig(ws):
                         cur = RIG_VALUES.setdefault(callsign, {})
                         cur.update(values)
                     broadcast({'rig': callsign, 'values': values})
+                memories = data.get('memory_channels')
+                if memories is not None:
+                    with MEMORY_LOCK:
+                        RIG_MEMORIES[callsign] = memories
+                    broadcast({'rig': callsign, 'memories': memories})
     finally:
         if mode == 'trx':
             with RIG_LOCK:
@@ -202,6 +209,8 @@ def rig(ws):
                     del RIGS[callsign]
             with VALUES_LOCK:
                 RIG_VALUES.pop(callsign, None)
+            with MEMORY_LOCK:
+                RIG_MEMORIES.pop(callsign, None)
 
 @app.route('/')
 def index():
@@ -225,6 +234,8 @@ def index():
             unapproved_count = sum(1 for u in USERS.values() if not u.get('approved'))
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
+    with MEMORY_LOCK:
+        memories = RIG_MEMORIES.get(selected, [])
     operator_status = None
     if operator:
         with USERS_LOCK:
@@ -250,7 +261,7 @@ def index():
         operator=operator, operator_status=operator_status,
         user=user, role=role,
         approved=approved, unapproved_count=unapproved_count,
-        active_users=active_users,
+        active_users=active_users, memories=memories,
         year=CURRENT_YEAR)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -547,6 +558,8 @@ def status_info():
             USER_RIG[user] = selected
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
+    with MEMORY_LOCK:
+        memories = RIG_MEMORIES.get(selected, [])
     operator_status = None
     if operator:
         with USERS_LOCK:
@@ -560,7 +573,8 @@ def status_info():
         'rigs': rigs,
         'selected': selected,
         'operator': operator,
-        'operator_status': operator_status
+        'operator_status': operator_status,
+        'memories': memories
     })
 
 @app.route('/command', methods=['POST'])
@@ -628,6 +642,12 @@ def command():
             try:
                 gain = int(value)
                 data = {'command': 'cat', 'data': f'MG{gain:03d};'}
+            except ValueError:
+                return ('', 204)
+        elif cmd == 'memory_channel':
+            try:
+                ch = int(value)
+                data = {'command': 'cat', 'data': f'MC{ch:03d};'}
             except ValueError:
                 return ('', 204)
         elif cmd == 'cat':
@@ -715,6 +735,12 @@ def command():
                 data = {'command': 'cat', 'data': f'MG{gain:03d};'}
             except ValueError:
                 return ('', 204)
+        elif cmd == 'memory_channel':
+            try:
+                ch = int(value)
+                data = {'command': 'cat', 'data': f'MC{ch:03d};'}
+            except ValueError:
+                return ('', 204)
         elif cmd == 'cat':
             if not value.endswith(';'):
                 value += ';'
@@ -785,6 +811,12 @@ def status(ws):
         for rig, vals in RIG_VALUES.items():
             try:
                 ws.send(json.dumps({'rig': rig, 'values': vals}))
+            except Exception:
+                pass
+    with MEMORY_LOCK:
+        for rig, mem in RIG_MEMORIES.items():
+            try:
+                ws.send(json.dumps({'rig': rig, 'memories': mem}))
             except Exception:
                 pass
     try:
