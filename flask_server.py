@@ -60,6 +60,10 @@ ACTIVE_WS_CLIENTS = set()
 ACTIVE_WS_LOCK = threading.Lock()
 USER_RIG = {}
 USER_RIG_LOCK = threading.Lock()
+RIG_AUDIO = {}
+RIG_AUDIO_LOCK = threading.Lock()
+AUDIO_CLIENTS = {}
+AUDIO_CLIENTS_LOCK = threading.Lock()
 
 GERMAN_PREFIXES = (
     'DA', 'DB', 'DC', 'DD', 'DF', 'DG', 'DH', 'DJ',
@@ -211,6 +215,53 @@ def rig(ws):
                 RIG_VALUES.pop(callsign, None)
             with MEMORY_LOCK:
                 RIG_MEMORIES.pop(callsign, None)
+
+
+@sock.route('/ws/rig_audio')
+def rig_audio(ws):
+    """Audio connection from a transceiver service."""
+    first = ws.receive()
+    try:
+        data = json.loads(first)
+        callsign = data.get('callsign')
+        username = data.get('username')
+        password = data.get('password')
+    except Exception:
+        ws.close()
+        return
+    if not username or not password:
+        ws.close()
+        return
+    with USERS_LOCK:
+        user = USERS.get(username)
+    if not user or not check_password_hash(user['password'], password) or not user.get('trx'):
+        ws.close()
+        return
+    if not callsign:
+        callsign = username
+    with RIG_AUDIO_LOCK:
+        RIG_AUDIO[callsign] = ws
+    try:
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+            remove = []
+            with AUDIO_CLIENTS_LOCK:
+                clients = list(AUDIO_CLIENTS.get(callsign, set()))
+            for c in clients:
+                try:
+                    c.send(msg)
+                except Exception:
+                    remove.append(c)
+            if remove:
+                with AUDIO_CLIENTS_LOCK:
+                    for c in remove:
+                        AUDIO_CLIENTS.get(callsign, set()).discard(c)
+    finally:
+        with RIG_AUDIO_LOCK:
+            if RIG_AUDIO.get(callsign) is ws:
+                del RIG_AUDIO[callsign]
 
 @app.route('/')
 def index():
@@ -766,42 +817,64 @@ def command():
 
 @sock.route('/ws/audio')
 def audio(ws):
-    if pyaudio is None:
-        ws.close()
-        return
-    p = pyaudio.PyAudio()
-    input_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                          input=True, frames_per_buffer=CHUNK,
-                          input_device_index=INPUT_DEVICE_INDEX)
-    output_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                           output=True, frames_per_buffer=CHUNK,
-                           output_device_index=OUTPUT_DEVICE_INDEX)
-    running = True
+    rig = session.get('rig')
+    rig_ws = None
+    if rig:
+        with RIG_AUDIO_LOCK:
+            rig_ws = RIG_AUDIO.get(rig)
+    if rig_ws is not None:
+        with AUDIO_CLIENTS_LOCK:
+            clients = AUDIO_CLIENTS.setdefault(rig, set())
+            clients.add(ws)
+        try:
+            while True:
+                msg = ws.receive()
+                if msg is None:
+                    break
+                try:
+                    rig_ws.send(msg)
+                except Exception:
+                    break
+        finally:
+            with AUDIO_CLIENTS_LOCK:
+                AUDIO_CLIENTS.get(rig, set()).discard(ws)
+    else:
+        if pyaudio is None:
+            ws.close()
+            return
+        p = pyaudio.PyAudio()
+        input_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                              input=True, frames_per_buffer=CHUNK,
+                              input_device_index=INPUT_DEVICE_INDEX)
+        output_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                               output=True, frames_per_buffer=CHUNK,
+                               output_device_index=OUTPUT_DEVICE_INDEX)
+        running = True
 
-    def send_audio():
-        while running:
-            data = input_stream.read(CHUNK, exception_on_overflow=False)
-            try:
-                ws.send(data)
-            except Exception:
-                logger.exception('Failed to send audio chunk')
-                break
+        def send_audio():
+            while running:
+                data = input_stream.read(CHUNK, exception_on_overflow=False)
+                try:
+                    ws.send(data)
+                except Exception:
+                    logger.exception('Failed to send audio chunk')
+                    break
 
-    t = threading.Thread(target=send_audio, daemon=True)
-    t.start()
-    try:
-        while True:
-            msg = ws.receive()
-            if msg is None:
-                break
-            output_stream.write(msg)
-    except Exception:
-        logger.exception('Audio websocket error')
-    finally:
-        running = False
-        input_stream.close()
-        output_stream.close()
-        p.terminate()
+        t = threading.Thread(target=send_audio, daemon=True)
+        t.start()
+        try:
+            while True:
+                msg = ws.receive()
+                if msg is None:
+                    break
+                output_stream.write(msg)
+        except Exception:
+            logger.exception('Audio websocket error')
+        finally:
+            running = False
+            input_stream.close()
+            output_stream.close()
+            p.terminate()
 
 @sock.route('/ws/status')
 def status(ws):

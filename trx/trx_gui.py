@@ -188,7 +188,18 @@ class App:
         async def run_client():
             await trx.client_loop(server_uri, handshake)
 
-        await asyncio.gather(users_loop(), run_client())
+        async def run_audio():
+            audio_handshake = {
+                'callsign': cfg['callsign'],
+                'username': cfg['username'],
+                'password': cfg['password'],
+                'mode': 'trx_audio'
+            }
+            await trx.audio_loop(server_uri.rsplit('/',1)[0]+'/rig_audio',
+                                audio_handshake,
+                                cfg['input_device'],
+                                cfg['output_device'])
+        await asyncio.gather(users_loop(), run_client(), run_audio())
 
 
 def main():

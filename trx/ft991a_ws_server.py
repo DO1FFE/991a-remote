@@ -6,11 +6,20 @@ from serial import SerialException
 import websockets
 import logging
 import os
+try:
+    import pyaudio
+except ImportError:  # pragma: no cover
+    pyaudio = None
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_CONNECT_URI = 'wss://991a.lima11.de:8084/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
+DEFAULT_AUDIO_URI = DEFAULT_CONNECT_URI.rsplit('/', 1)[0] + '/rig_audio'
+AUDIO_RATE = 16000
+AUDIO_FORMAT = pyaudio.paInt16 if pyaudio else 8
+CHANNELS = 1
+CHUNK = 1024
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, 'error.log')
@@ -191,6 +200,37 @@ async def client_loop(uri, handshake):
             await asyncio.sleep(1)
 
 
+async def audio_loop(uri, handshake, input_dev=None, output_dev=None):
+    if pyaudio is None:
+        logger.error('pyaudio not installed, audio disabled')
+        return
+    p = pyaudio.PyAudio()
+    in_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                       input=True, frames_per_buffer=CHUNK,
+                       input_device_index=input_dev)
+    out_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
+                        output=True, frames_per_buffer=CHUNK,
+                        output_device_index=output_dev)
+    while True:
+        try:
+            async with websockets.connect(uri) as ws:
+                await ws.send(json.dumps(handshake))
+
+                async def sender():
+                    while True:
+                        data = in_stream.read(CHUNK, exception_on_overflow=False)
+                        await ws.send(data)
+
+                async def receiver():
+                    async for msg in ws:
+                        out_stream.write(msg)
+
+                await asyncio.gather(sender(), receiver())
+        except Exception:
+            logger.exception('Audio connection error, retrying in 1 second')
+            await asyncio.sleep(1)
+
+
 async def main():
     global ser
     parser = argparse.ArgumentParser(description='FT-991A control server')
@@ -202,6 +242,12 @@ async def main():
                         help='Station callsign to announce')
     parser.add_argument('--server', default=DEFAULT_CONNECT_URI,
                         help='Flask server ws(s)://host:port/ws/rig')
+    parser.add_argument('--audio-server', default=DEFAULT_AUDIO_URI,
+                        help='Audio server ws(s)://host:port/ws/rig_audio')
+    parser.add_argument('--input-device', type=int, default=None,
+                        help='Audio input device index')
+    parser.add_argument('--output-device', type=int, default=None,
+                        help='Audio output device index')
     parser.add_argument('--username', default=None,
                         help='Username for login')
     parser.add_argument('--password', default=None,
@@ -222,7 +268,17 @@ async def main():
             handshake.update({'username': args.username,
                               'password': args.password,
                               'mode': 'trx'})
-        await client_loop(args.server, handshake)
+        audio_handshake = None
+        if args.username and args.password:
+            audio_handshake = {'callsign': CALLSIGN,
+                               'username': args.username,
+                               'password': args.password,
+                               'mode': 'trx_audio'}
+        tasks = [client_loop(args.server, handshake)]
+        if audio_handshake:
+            tasks.append(audio_loop(args.audio_server, audio_handshake,
+                                   args.input_device, args.output_device))
+        await asyncio.gather(*tasks)
     finally:
         if ser:
             ser.close()
