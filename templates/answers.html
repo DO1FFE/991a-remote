@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}CAT Antworten{% endblock %}
+{% block header_title %}CAT Antworten{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('index') }}">Zurück</a> | <a href="{{ url_for('logout') }}">Abmelden</a></nav>{% endblock %}
+{% block content %}
+    <h2>CAT Antworten</h2>
+    {% if answers %}
+    <table>
+        <tr><th>Kommando</th><th>Antwort</th></tr>
+        {% for cmd, ans in answers.items() %}
+        <tr><td>{{ cmd }}</td><td>{{ ans }}</td></tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>Keine Daten vorhanden.</p>
+    {% endif %}
+{% endblock %}
