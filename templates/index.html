@@ -9,6 +9,7 @@
     <p class="warn">{{ unapproved_count }} Benutzer warten auf Freischaltung.</p>
     {% endif %}
     <p class="user-info">Angemeldet als {{ user }} ({{ role }})</p>
+    {% if role == 'admin' %}
     <p class="online-users">Online:
         {% if active_users %}
             {% for u, r in active_users %}
@@ -18,6 +19,7 @@
             keiner
         {% endif %}
     </p>
+    {% endif %}
     <main>
         <div class="front-panel">
             <div class="screen">
