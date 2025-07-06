@@ -144,6 +144,12 @@ footer {
     width:0;
     background:#0f0;
 }
+.rtt-display {
+    margin-top:5px;
+    font-size:0.9em;
+    text-align:right;
+    color:#0f0;
+}
 .vfo { flex:1; display:flex; justify-content:center; }
 .vfo-knob {
     width:160px;
