@@ -1,6 +1,5 @@
 import argparse
 import threading
-import serial
 import asyncio
 import json
 import os
@@ -26,16 +25,12 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SERIAL_PORT = 'COM3'
-DEFAULT_BAUDRATE = 9600
 DEFAULT_REMOTE_SERVER = None
 
 USERS_FILE = os.path.join(BASE_DIR, 'users.json')
 USERS = {}
 USERS_LOCK = threading.Lock()
 
-SERIAL_PORT = DEFAULT_SERIAL_PORT
-SERIAL_BAUDRATE = DEFAULT_BAUDRATE
 REMOTE_SERVER = None
 AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16
@@ -62,7 +57,6 @@ CURRENT_YEAR = datetime.datetime.now().year
 
 sock = Sock(app)
 
-ser = None
 
 def broadcast(update):
     data = json.dumps(update)
@@ -535,67 +529,7 @@ def command():
                 if resp:
                     return resp
     else:
-        if ser is None:
-            return ('Kein TRX verbunden', 200)
-        if cmd == 'frequency':
-            try:
-                freq = int(value)
-                ser.write(f'FA{freq:011d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'mode':
-            try:
-                mode = int(value)
-                ser.write(f'MD{mode:02d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'ptt_on':
-            ser.write(b'TX;')
-        elif cmd == 'ptt_off':
-            ser.write(b'RX;')
-        elif cmd == 'shift':
-            if value in ('0', '1', '2'):
-                ser.write(f'RT{value};'.encode('ascii'))
-            else:
-                pass
-        elif cmd == 'offset':
-            try:
-                off = int(value)
-                ser.write(f'OF{off:07d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'ctcss':
-            try:
-                tone = float(value)
-                ser.write(f'CT{int(tone*10):04d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'dcs':
-            try:
-                code = int(value)
-                ser.write(f'DS{code:03d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'mic_gain':
-            try:
-                gain = int(value)
-                ser.write(f'MG{gain:03d};'.encode('ascii'))
-            except ValueError:
-                pass
-        elif cmd == 'cat':
-            if not value.endswith(';'):
-                value += ';'
-            ser.write(value.encode('ascii'))
-        elif cmd == 'get_frequency':
-            ser.write(b'FA;')
-            ser.readline()
-        elif cmd == 'get_mode':
-            ser.write(b'MD;')
-            ser.readline()
-        elif cmd == 'get_smeter':
-            ser.write(b'SM;')
-            reply = ser.readline()
-            return reply.decode('ascii', errors='ignore')
+        return ('Kein TRX verbunden', 200)
     return ('', 204)
 
 @sock.route('/ws/audio')
@@ -654,12 +588,8 @@ def status(ws):
             STATUS_CLIENTS.discard(ws)
 
 def main():
-    global SERIAL_PORT, SERIAL_BAUDRATE, ser, REMOTE_SERVER
+    global REMOTE_SERVER
     parser = argparse.ArgumentParser(description='FT-991A remote server')
-    parser.add_argument('--serial-port', default=DEFAULT_SERIAL_PORT,
-                        help='FT-991A serial port')
-    parser.add_argument('--baudrate', type=int, default=DEFAULT_BAUDRATE,
-                        help='Serial baud rate')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
                         help='Remote control server ws://host:port')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
@@ -672,8 +602,6 @@ def main():
                         help='List audio devices and exit')
     args = parser.parse_args()
 
-    SERIAL_PORT = args.serial_port
-    SERIAL_BAUDRATE = args.baudrate
     app.secret_key = args.secret
     global INPUT_DEVICE_INDEX, OUTPUT_DEVICE_INDEX
     INPUT_DEVICE_INDEX = args.input_device
@@ -688,16 +616,8 @@ def main():
         return
 
     REMOTE_SERVER = args.server
-    if REMOTE_SERVER:
-        ser = None
-    else:
-        ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=1)
-    try:
-        # The web interface always runs on port 8084
-        app.run(host='0.0.0.0', port=8084)
-    finally:
-        if ser:
-            ser.close()
+    # The web interface always runs on port 8084
+    app.run(host='0.0.0.0', port=8084)
 
 
 if __name__ == '__main__':
