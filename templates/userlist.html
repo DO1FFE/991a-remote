@@ -6,13 +6,14 @@
     <p>Angemeldet als {{ session.get('user') }} ({{ role }})</p>
     <p><a href="{{ url_for('admin_create_user') }}">Neuen Benutzer anlegen</a></p>
     <table border="1">
-        <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Aktionen</th><th>Bearbeiten</th></tr>
+        <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Letzter Login</th><th>Aktionen</th><th>Bearbeiten</th></tr>
         {% for name, u in users.items() %}
         <tr>
             <td>{{ name }}</td>
             <td>{{ u.role }}</td>
             <td>{{ 'ja' if u.approved else 'nein' }}</td>
             <td>{{ 'ja' if u.trx else 'nein' }}</td>
+            <td>{{ u.last_login_local }}</td>
             <td>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
@@ -23,6 +24,11 @@
                     <input type="hidden" name="username" value="{{ name }}">
                     <input type="hidden" name="action" value="make_admin">
                     <button type="submit">Admin machen</button>
+                </form>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="username" value="{{ name }}">
+                    <input type="hidden" name="action" value="remove_admin">
+                    <button type="submit">Admin entziehen</button>
                 </form>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">
