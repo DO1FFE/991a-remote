@@ -87,6 +87,79 @@ CURRENT_YEAR = datetime.datetime.now().year
 sock = Sock(app)
 
 
+def load_answer_commands():
+    """Return list of CAT commands that provide an answer."""
+    summary = os.path.join(BASE_DIR, 'docs', 'cat_commands_summary.md')
+    commands = []
+    try:
+        with open(summary, 'r', encoding='utf-8') as f:
+            for line in f:
+                if not line.startswith('|') or line.startswith('|-'):
+                    continue
+                parts = [p.strip() for p in line.split('|')]
+                if len(parts) < 6 or parts[1] == 'Command':
+                    continue
+                cmd, ans = parts[1], parts[5]
+                if ans == 'O' and len(cmd) == 2:
+                    commands.append(f'{cmd};')
+    except FileNotFoundError:
+        pass
+    return commands
+
+
+def save_answers(data):
+    answers_file = os.path.join(BASE_DIR, 'docs', 'cat_answers.json')
+    try:
+        with open(answers_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        logger.exception('Failed to save answers')
+
+
+def load_saved_answers():
+    answers_file = os.path.join(BASE_DIR, 'docs', 'cat_answers.json')
+    try:
+        with open(answers_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def fetch_cat_answers():
+    """Collect answers for CAT commands and return dict."""
+    commands = load_answer_commands()
+    results = {}
+    if REMOTE_SERVER:
+        async def run():
+            res = {}
+            try:
+                async with websockets.connect(REMOTE_SERVER) as ws:
+                    for cmd in commands:
+                        await ws.send(json.dumps({'command': 'cat', 'data': cmd}))
+                        try:
+                            reply = await ws.recv()
+                        except Exception:
+                            reply = ''
+                        res[cmd.strip(';')] = reply
+            except Exception:
+                logger.exception('Failed to fetch answers')
+            return res
+        results = asyncio.run(run())
+    elif RIGS:
+        rig = session.get('rig')
+        with RIG_LOCK:
+            ws = RIGS.get(rig)
+        if ws:
+            for cmd in commands:
+                ws.send(json.dumps({'command': 'cat', 'data': cmd}))
+                try:
+                    reply = ws.receive()
+                except Exception:
+                    reply = ''
+                results[cmd.strip(';')] = reply
+    return results
+
+
 def broadcast(update):
     data = json.dumps(update)
     remove = []
@@ -627,6 +700,27 @@ def status_info():
         'operator_status': operator_status,
         'memories': memories
     })
+
+
+@app.route('/answers')
+def show_answers():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    role = session.get('role')
+    answers = load_saved_answers()
+    return render_template('answers.html', answers=answers, role=role,
+                           year=CURRENT_YEAR)
+
+
+@app.route('/fetch_answers')
+def fetch_answers_route():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    answers = fetch_cat_answers()
+    save_answers(answers)
+    return redirect(url_for('show_answers'))
 
 @app.route('/command', methods=['POST'])
 def command():
