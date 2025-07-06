@@ -6,13 +6,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="container">
-<header>
+<div class="container radio-case">
+<header class="radio-display">
     <h1>FT-991A Steuerung</h1>
     <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
 </header>
     <p>Angemeldet als {{ user }} ({{ role }})</p>
-<main>
+<main class="controls">
     <section class="controls-info">
         <h2>Wichtige Bedienelemente am FT-991A</h2>
         <ul>
