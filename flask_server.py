@@ -11,11 +11,13 @@ from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyaudio
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_REMOTE_SERVER = 'ws://991a.lima11.de:9001'
 
-USERS_FILE = 'users.json'
+USERS_FILE = os.path.join(BASE_DIR, 'users.json')
 USERS = {}
 USERS_LOCK = threading.Lock()
 
@@ -33,7 +35,10 @@ RIG_LOCK = threading.Lock()
 OPERATORS = {}
 OPERATOR_LOCK = threading.Lock()
 
-app = Flask(__name__)
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'server', 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'server', 'static')
+app = Flask(__name__, template_folder=TEMPLATES_DIR,
+            static_folder=STATIC_DIR)
 DEFAULT_SECRET = 'change-me'
 app.secret_key = DEFAULT_SECRET
 CURRENT_YEAR = datetime.datetime.now().year

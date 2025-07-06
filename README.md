@@ -4,8 +4,8 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 ## Aufbau
 
-- `server/flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
- - `server/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner. Er meldet sich mit Benutzerdaten am Flask-Server an und kann wahlweise einen TRX bereitstellen oder als Operator verbinden.
+- `flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
+- `trx/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner. Er meldet sich mit Benutzerdaten am Flask-Server an und kann wahlweise einen TRX bereitstellen oder als Operator verbinden.
 - `server/templates/` – HTML-Vorlagen für Login und Steuerungsseite
 - `requirements.txt` – benötigte Python-Pakete
 
@@ -25,7 +25,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
    eine Verbindung zum Flask‑Server aufbauen. Dabei melden Sie sich mit Ihren Benutzerdaten an:
    ```bash
-   python server/ft991a_ws_server.py --serial-port COM3 \
+   python trx/ft991a_ws_server.py --serial-port COM3 \
        --connect ws://991a.lima11.de:8084/ws/rig \
        --callsign MYCALL --username MYCALL --password secret --mode trx
    ```
@@ -36,7 +36,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 Möchten Sie mit dem Programm selbst einen entfernten TRX bedienen, starten Sie es ohne serielle Schnittstelle und melden sich als Operator an:
 
 ```bash
-python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
+python trx/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
     --username MYCALL --password secret --mode operator
 ```
 
@@ -44,7 +44,7 @@ python server/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
 
 1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server wartet auf eine eingehende Verbindung des Steuerungsdienstes:
    ```bash
-   python server/flask_server.py
+   python flask_server.py
    ```
    Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8084 (anpassbar mit `--http-port`).
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
