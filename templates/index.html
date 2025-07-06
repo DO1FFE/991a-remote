@@ -9,6 +9,15 @@
     <p class="warn">{{ unapproved_count }} Benutzer warten auf Freischaltung.</p>
     {% endif %}
     <p class="user-info">Angemeldet als {{ user }} ({{ role }})</p>
+    <p class="online-users">Online:
+        {% if active_users %}
+            {% for u, r in active_users %}
+                {{ u }} ({% if r is not none %}{{ r|round(0, 'floor') }} ms{% else %}-{% endif %}){% if not loop.last %}, {% endif %}
+            {% endfor %}
+        {% else %}
+            keiner
+        {% endif %}
+    </p>
     <main>
         <div class="front-panel">
             <div class="screen">
@@ -467,8 +476,16 @@ document.addEventListener('keyup',e=>{
     if(e.code==='Space') stopPTT();
 });
 startStatus();
+let lastRtt = null;
 setInterval(()=>{
-    fetch('{{ url_for('heartbeat') }}', {method:'POST'}).catch(()=>{});
+    const start = performance.now();
+    fetch('{{ url_for('heartbeat') }}', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({rtt:lastRtt})
+    }).then(()=>{
+        lastRtt = Math.round(performance.now() - start);
+    }).catch(()=>{});
 }, 5000);
 </script>
 {% endblock %}

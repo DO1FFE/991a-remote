@@ -49,6 +49,7 @@ STATUS_CLIENTS = set()
 STATUS_LOCK = threading.Lock()
 ACTIVE_USERS = {}
 ACTIVE_LOCK = threading.Lock()
+USER_RTT = {}
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -188,11 +189,21 @@ def index():
                 operator_status = 'Operator'
             else:
                 operator_status = 'SWL'
+    now = time.time()
+    with ACTIVE_LOCK:
+        active_users = []
+        for u, ts in list(ACTIVE_USERS.items()):
+            if now - ts < 10:
+                active_users.append((u, USER_RTT.get(u)))
+            else:
+                del ACTIVE_USERS[u]
+                USER_RTT.pop(u, None)
     return render_template(
         'index.html', rigs=rigs, selected_rig=selected,
         operator=operator, operator_status=operator_status,
         user=user, role=role,
         approved=approved, unapproved_count=unapproved_count,
+        active_users=active_users,
         year=CURRENT_YEAR)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -286,11 +297,11 @@ def admin_users():
     role = session.get('role')
     now = time.time()
     with ACTIVE_LOCK:
-        active = [u for u, ts in list(ACTIVE_USERS.items()) if now - ts < 10]
         for u, ts in list(ACTIVE_USERS.items()):
             if now - ts >= 10:
                 del ACTIVE_USERS[u]
-    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role, active_users=active)
+                USER_RTT.pop(u, None)
+    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role)
 
 
 @app.route('/admin/user/<username>', methods=['GET', 'POST'])
@@ -388,8 +399,16 @@ def heartbeat():
     if not session.get('logged_in'):
         return ('', 401)
     user = session.get('user')
+    rtt = None
+    if request.is_json:
+        try:
+            rtt = float(request.json.get('rtt')) if request.json.get('rtt') is not None else None
+        except (TypeError, ValueError):
+            rtt = None
     with ACTIVE_LOCK:
         ACTIVE_USERS[user] = time.time()
+        if rtt is not None:
+            USER_RTT[user] = rtt
     return ('', 204)
 
 @app.route('/command', methods=['POST'])
