@@ -130,9 +130,20 @@ def index():
     approved = session.get('approved')
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
-    return render_template('index.html', rigs=rigs, selected_rig=selected,
-                           operator=operator, user=user, role=role,
-                           approved=approved, year=CURRENT_YEAR)
+    operator_status = None
+    if operator:
+        with USERS_LOCK:
+            op_data = USERS.get(operator)
+        if op_data:
+            if op_data.get('role') == 'admin' or op_data.get('approved'):
+                operator_status = 'Operator'
+            else:
+                operator_status = 'SWL'
+    return render_template(
+        'index.html', rigs=rigs, selected_rig=selected,
+        operator=operator, operator_status=operator_status,
+        user=user, role=role,
+        approved=approved, year=CURRENT_YEAR)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

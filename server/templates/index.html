@@ -35,7 +35,13 @@
         </label>
         <button type="submit">Ausw&auml;hlen</button>
     </form>
-    <p>Bediener: {{ operator or 'keiner' }}</p>
+    <p>Bediener:
+        {% if operator %}
+            {{ operator }} ({{ operator_status or 'Unbekannt' }})
+        {% else %}
+            keiner
+        {% endif %}
+    </p>
     {% if role == 'admin' or approved %}
         {% if operator == user %}
         <form method="post" action="{{ url_for('release_control') }}">
