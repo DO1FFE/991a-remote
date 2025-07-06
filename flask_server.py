@@ -9,6 +9,7 @@ import logging
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import datetime
 import time
+from zoneinfo import ZoneInfo
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
 try:
@@ -83,6 +84,7 @@ app = Flask(__name__, template_folder=TEMPLATES_DIR,
 DEFAULT_SECRET = 'change-me'
 app.secret_key = DEFAULT_SECRET
 CURRENT_YEAR = datetime.datetime.now().year
+EU_BERLIN = ZoneInfo('Europe/Berlin')
 
 sock = Sock(app)
 
@@ -395,6 +397,9 @@ def login():
         password = request.form.get('password') or ''
         user = USERS.get(username)
         if user and check_password_hash(user['password'], password):
+            with USERS_LOCK:
+                USERS[username]['last_login'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                save_users()
             session['logged_in'] = True
             session['user'] = username
             session['role'] = user.get('role', 'operator')
@@ -473,6 +478,9 @@ def admin_users():
                 elif action == 'make_admin':
                     user['role'] = 'admin'
                     user['approved'] = True
+                elif action == 'remove_admin':
+                    if username != 'admin':
+                        user['role'] = 'operator'
                 elif action == 'make_trx':
                     user['trx'] = True
                 elif action == 'remove_trx':
@@ -485,7 +493,24 @@ def admin_users():
             if now - ts >= 10:
                 del ACTIVE_USERS[u]
                 USER_RTT.pop(u, None)
-    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role)
+    with USERS_LOCK:
+        users_copy = {
+            name: dict(data) for name, data in USERS.items()
+        }
+    for info in users_copy.values():
+        ts = info.get('last_login')
+        if ts:
+            try:
+                info['last_login_local'] = (
+                    datetime.datetime.fromisoformat(ts)
+                    .astimezone(EU_BERLIN)
+                    .strftime('%Y-%m-%d %H:%M:%S')
+                )
+            except Exception:
+                info['last_login_local'] = ts
+        else:
+            info['last_login_local'] = '-'
+    return render_template('userlist.html', users=users_copy, year=CURRENT_YEAR, role=role)
 
 
 @app.route('/admin/create_user', methods=['GET', 'POST'])
