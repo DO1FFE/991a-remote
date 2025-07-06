@@ -5,13 +5,14 @@
 {% block content %}
     <p>Angemeldet als {{ session.get('user') }} ({{ role }})</p>
     <table border="1">
-        <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Aktionen</th><th>Bearbeiten</th></tr>
+        <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Online</th><th>Aktionen</th><th>Bearbeiten</th></tr>
         {% for name, u in users.items() %}
         <tr>
             <td>{{ name }}</td>
             <td>{{ u.role }}</td>
             <td>{{ 'ja' if u.approved else 'nein' }}</td>
             <td>{{ 'ja' if u.trx else 'nein' }}</td>
+            <td>{{ 'ja' if name in active_users else 'nein' }}</td>
             <td>
                 <form method="post" style="display:inline">
                     <input type="hidden" name="username" value="{{ name }}">

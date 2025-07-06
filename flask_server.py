@@ -7,6 +7,7 @@ import websockets
 import logging
 from flask import Flask, render_template, request, redirect, session, url_for
 import datetime
+import time
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyaudio
@@ -46,6 +47,8 @@ RIG_VALUES = {}
 VALUES_LOCK = threading.Lock()
 STATUS_CLIENTS = set()
 STATUS_LOCK = threading.Lock()
+ACTIVE_USERS = {}
+ACTIVE_LOCK = threading.Lock()
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -281,7 +284,13 @@ def admin_users():
                     user['trx'] = False
                 save_users()
     role = session.get('role')
-    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role)
+    now = time.time()
+    with ACTIVE_LOCK:
+        active = [u for u, ts in list(ACTIVE_USERS.items()) if now - ts < 10]
+        for u, ts in list(ACTIVE_USERS.items()):
+            if now - ts >= 10:
+                del ACTIVE_USERS[u]
+    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role, active_users=active)
 
 
 @app.route('/admin/user/<username>', methods=['GET', 'POST'])
@@ -373,6 +382,15 @@ def release_control():
             if OPERATORS.get(rig) == user:
                 OPERATORS.pop(rig, None)
     return redirect(url_for('index'))
+
+@app.route('/heartbeat', methods=['POST'])
+def heartbeat():
+    if not session.get('logged_in'):
+        return ('', 401)
+    user = session.get('user')
+    with ACTIVE_LOCK:
+        ACTIVE_USERS[user] = time.time()
+    return ('', 204)
 
 @app.route('/command', methods=['POST'])
 def command():
