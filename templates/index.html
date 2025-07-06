@@ -11,6 +11,9 @@
         <h1>FT-991A</h1>
         <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
     </header>
+    {% if role == 'admin' and unapproved_count %}
+    <p class="warn">{{ unapproved_count }} Benutzer warten auf Freischaltung.</p>
+    {% endif %}
     <p class="user-info">Angemeldet als {{ user }} ({{ role }})</p>
     <main>
         <div class="front-panel">

@@ -170,6 +170,10 @@ def index():
     user = session.get('user')
     role = session.get('role')
     approved = session.get('approved')
+    unapproved_count = 0
+    if role == 'admin':
+        with USERS_LOCK:
+            unapproved_count = sum(1 for u in USERS.values() if not u.get('approved'))
     with OPERATOR_LOCK:
         operator = OPERATORS.get(selected)
     operator_status = None
@@ -185,7 +189,8 @@ def index():
         'index.html', rigs=rigs, selected_rig=selected,
         operator=operator, operator_status=operator_status,
         user=user, role=role,
-        approved=approved, year=CURRENT_YEAR)
+        approved=approved, unapproved_count=unapproved_count,
+        year=CURRENT_YEAR)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
