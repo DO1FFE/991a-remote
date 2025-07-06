@@ -9,7 +9,7 @@ import os
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_CONNECT_URI = 'ws://991a.lima11.de:8084/ws/rig'
+DEFAULT_CONNECT_URI = 'wss://991a.lima11.de:8084/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -178,6 +178,8 @@ async def main():
                         help='Serial baud rate')
     parser.add_argument('--callsign', default=DEFAULT_CALLSIGN,
                         help='Station callsign to announce')
+    parser.add_argument('--server', default=DEFAULT_CONNECT_URI,
+                        help='Flask server ws(s)://host:port/ws/rig')
     parser.add_argument('--username', default=None,
                         help='Username for login')
     parser.add_argument('--password', default=None,
@@ -198,7 +200,7 @@ async def main():
             handshake.update({'username': args.username,
                               'password': args.password,
                               'mode': 'trx'})
-        await client_loop(DEFAULT_CONNECT_URI, handshake)
+        await client_loop(args.server, handshake)
     finally:
         if ser:
             ser.close()
