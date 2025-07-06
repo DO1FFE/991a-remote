@@ -23,11 +23,12 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 ### Server am Funkgerät (Windows)
 
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
-   eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch mit
-   `991a.lima11.de:8084`. Melden Sie sich mit Ihren Benutzerdaten an:
+   eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch über
+   `wss://991a.lima11.de:8084/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
   ```bash
   python trx/ft991a_ws_server.py --serial-port COM3 \
-      --callsign MYCALL --username MYCALL --password secret
+      --callsign MYCALL --username MYCALL --password secret \
+      --server wss://991a.lima11.de:8084/ws/rig
   ```
    Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
 
