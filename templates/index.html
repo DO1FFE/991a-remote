@@ -346,12 +346,13 @@
 {% endblock %}
 {% block scripts %}
 <script>
+const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
 let sock;
 let processor;
 let audioRetry;
 function startAudio(){
     function connect(){
-        sock = new WebSocket('ws://' + location.host + '/ws/audio');
+        sock = new WebSocket(wsProto + '://' + location.host + '/ws/audio');
         sock.binaryType = 'arraybuffer';
         sock.onclose = () => {
             if(processor){ processor.disconnect(); processor=null; }
@@ -411,7 +412,7 @@ function formatFreq(f){
 }
 function startStatus(){
     function connect(){
-        statusSock=new WebSocket('ws://'+location.host+'/ws/status');
+        statusSock=new WebSocket(wsProto+'://'+location.host+'/ws/status');
         statusSock.onclose=()=>{ statusRetry = setTimeout(connect, 1000); };
         statusSock.onerror=()=>{ if(statusSock.readyState!==WebSocket.CLOSED) statusSock.close(); };
         statusSock.onmessage=e=>{
@@ -446,7 +447,7 @@ function startActiveUsers(){
     const p=document.querySelector('.online-users');
     if(!p) return;
     function connect(){
-        activeSock=new WebSocket('ws://'+location.host+'/ws/active_users');
+        activeSock=new WebSocket(wsProto+'://'+location.host+'/ws/active_users');
         activeSock.onclose=()=>{ activeRetry = setTimeout(connect, 1000); };
         activeSock.onerror=()=>{ if(activeSock.readyState!==WebSocket.CLOSED) activeSock.close(); };
         activeSock.onmessage=e=>{
