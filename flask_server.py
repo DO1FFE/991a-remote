@@ -415,13 +415,15 @@ def command():
             data = {'command': 'get_frequency'}
         elif cmd == 'get_mode':
             data = {'command': 'get_mode'}
+        elif cmd == 'get_smeter':
+            data = {'command': 'get_smeter'}
         else:
             return ('', 204)
 
         async def send():
             async with websockets.connect(REMOTE_SERVER) as ws:
                 await ws.send(json.dumps(data))
-                if cmd in ('get_frequency', 'get_mode'):
+                if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
                     return await ws.recv()
             return None
         resp = asyncio.run(send())
@@ -487,12 +489,14 @@ def command():
             data = {'command': 'get_frequency'}
         elif cmd == 'get_mode':
             data = {'command': 'get_mode'}
+        elif cmd == 'get_smeter':
+            data = {'command': 'get_smeter'}
         else:
             return ('', 204)
 
         with RIG_LOCK:
             ws.send(json.dumps(data))
-            if cmd in ('get_frequency', 'get_mode'):
+            if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
                 resp = ws.receive()
                 if resp:
                     return resp
@@ -552,6 +556,10 @@ def command():
         elif cmd == 'get_mode':
             ser.write(b'MD;')
             ser.readline()
+        elif cmd == 'get_smeter':
+            ser.write(b'SM;')
+            reply = ser.readline()
+            return reply.decode('ascii', errors='ignore')
     return ('', 204)
 
 @sock.route('/ws/audio')

@@ -67,6 +67,10 @@ async def handle_client(websocket, announce=None):
                 ser.write(b'MD;')
                 reply = ser.readline().decode('ascii', errors='ignore').strip()
                 await websocket.send(json.dumps({'response': reply}))
+            elif cmd == 'get_smeter':
+                ser.write(b'SM;')
+                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                await websocket.send(json.dumps({'response': reply}))
 
 async def client_loop(uri, handshake):
     while True:
