@@ -4,6 +4,7 @@
 {% block nav %}<p><a href="{{ url_for('logout') }}">Abmelden</a> | <a href="{{ url_for('index') }}">Startseite</a></p>{% endblock %}
 {% block content %}
     <p>Angemeldet als {{ session.get('user') }} ({{ role }})</p>
+    <p><a href="{{ url_for('admin_create_user') }}">Neuen Benutzer anlegen</a></p>
     <table border="1">
         <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Aktionen</th><th>Bearbeiten</th></tr>
         {% for name, u in users.items() %}

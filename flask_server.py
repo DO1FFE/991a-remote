@@ -298,7 +298,9 @@ def change_credentials():
     if request.method == 'POST':
         new_username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
-        if not new_username or not password or not is_valid_callsign(new_username):
+        if not new_username or not password or (
+            new_username != username and session.get('role') != 'admin' and not is_valid_callsign(new_username)
+        ):
             return render_template('change_credentials.html', error='Ung\u00fcltige Eingabe', year=CURRENT_YEAR)
         with USERS_LOCK:
             if new_username != username and new_username in USERS:
@@ -345,6 +347,46 @@ def admin_users():
     return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role)
 
 
+@app.route('/admin/create_user', methods=['GET', 'POST'])
+def admin_create_user():
+    """Allow an administrator to create a new user with any username."""
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    error = None
+    user_data = {
+        'role': 'operator',
+        'approved': False,
+        'trx': False,
+    }
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        role_val = request.form.get('role') or 'operator'
+        approved = request.form.get('approved') == '1'
+        trx = request.form.get('trx') == '1'
+        if not username or not password:
+            error = 'Ung\u00fcltige Eingabe'
+        else:
+            with USERS_LOCK:
+                if username in USERS:
+                    error = 'Benutzer existiert bereits'
+                else:
+                    USERS[username] = {
+                        'password': generate_password_hash(password),
+                        'role': role_val,
+                        'approved': approved,
+                        'needs_change': False,
+                        'trx': trx,
+                    }
+                    save_users()
+                    return redirect(url_for('admin_users'))
+        user_data['role'] = role_val
+        user_data['approved'] = approved
+        user_data['trx'] = trx
+    role = session.get('role')
+    return render_template('create_user.html', user_data=user_data, year=CURRENT_YEAR, role=role, error=error)
+
+
 @app.route('/admin/user/<username>', methods=['GET', 'POST'])
 def admin_edit_user(username):
     if session.get('role') != 'admin':
@@ -367,10 +409,10 @@ def admin_edit_user(username):
         approved = request.form.get('approved') == '1'
         trx = request.form.get('trx') == '1'
         with USERS_LOCK:
-            if new_username != username and new_username in USERS:
-                error = 'Benutzer existiert bereits'
-            elif new_username and not is_valid_callsign(new_username):
+            if not new_username:
                 error = 'Ung\u00fcltige Eingabe'
+            elif new_username != username and new_username in USERS:
+                error = 'Benutzer existiert bereits'
             else:
                 if new_username != username:
                     USERS[new_username] = USERS.pop(username)
