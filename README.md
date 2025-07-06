@@ -42,11 +42,11 @@ python trx/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
 
 ### Flask‑Server auf dem Client (Linux)
 
-1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server wartet auf eine eingehende Verbindung des Steuerungsdienstes:
+1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server nutzt standardmäßig keine serielle Schnittstelle, sondern wartet auf eingehende WebSocket‑Verbindungen des Steuerungsdienstes:
    ```bash
    python flask_server.py
    ```
-   Mit dem Parameter `--server` kann optional weiterhin ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8084 (anpassbar mit `--http-port`).
+   Mit dem Parameter `--server` kann optional ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8084 (anpassbar mit `--http-port`).
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
     Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
     Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen.

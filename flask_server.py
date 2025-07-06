@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_REMOTE_SERVER = 'ws://991a.lima11.de:9001'
+DEFAULT_REMOTE_SERVER = None
 
 USERS_FILE = os.path.join(BASE_DIR, 'users.json')
 USERS = {}
@@ -450,14 +450,19 @@ def command():
             return ('', 204)
 
         async def send():
-            async with websockets.connect(REMOTE_SERVER) as ws:
-                await ws.send(json.dumps(data))
-                if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
-                    return await ws.recv()
+            try:
+                async with websockets.connect(REMOTE_SERVER) as ws:
+                    await ws.send(json.dumps(data))
+                    if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
+                        return await ws.recv()
+            except Exception:
+                logger.exception('Remote command failed')
+                return None
             return None
         resp = asyncio.run(send())
         if resp is not None:
             return resp
+        return ('Kein TRX verbunden', 200)
     elif RIGS:
         rig = session.get('rig')
         with RIG_LOCK:
@@ -530,6 +535,8 @@ def command():
                 if resp:
                     return resp
     else:
+        if ser is None:
+            return ('Kein TRX verbunden', 200)
         if cmd == 'frequency':
             try:
                 freq = int(value)
