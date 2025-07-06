@@ -141,6 +141,16 @@
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>MIC Gain</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <label>Encoder:
+                    <select name="value" {{ 'disabled' if controls_disabled else '' }}>
+                        <option value="up">Up</option>
+                        <option value="down">Down</option>
+                    </select>
+                </label>
+                <input type="hidden" name="cmd" value="encoder">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Encoder</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <input type="hidden" name="cmd" value="get_frequency">
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Frequenz lesen</button>
             </form>
