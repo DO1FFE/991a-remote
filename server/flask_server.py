@@ -198,7 +198,8 @@ def change_credentials():
                 session['user'] = new_username
         save_users()
         return redirect(url_for('index'))
-    return render_template('change_credentials.html', current=username, year=CURRENT_YEAR)
+    role = session.get('role')
+    return render_template('change_credentials.html', current=username, year=CURRENT_YEAR, role=role)
 
 
 @app.route('/admin/users', methods=['GET', 'POST'])
@@ -221,7 +222,48 @@ def admin_users():
                 elif action == 'remove_trx':
                     user['trx'] = False
                 save_users()
-    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR)
+    role = session.get('role')
+    return render_template('userlist.html', users=USERS, year=CURRENT_YEAR, role=role)
+
+
+@app.route('/admin/user/<username>', methods=['GET', 'POST'])
+def admin_edit_user(username):
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    with USERS_LOCK:
+        user = USERS.get(username)
+    if not user:
+        return redirect(url_for('admin_users'))
+    error = None
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'delete':
+            with USERS_LOCK:
+                USERS.pop(username, None)
+                save_users()
+            return redirect(url_for('admin_users'))
+        new_username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        role_val = request.form.get('role') or user.get('role', 'operator')
+        approved = request.form.get('approved') == '1'
+        trx = request.form.get('trx') == '1'
+        with USERS_LOCK:
+            if new_username != username and new_username in USERS:
+                error = 'User exists'
+            else:
+                if new_username != username:
+                    USERS[new_username] = USERS.pop(username)
+                    username = new_username
+                if password:
+                    USERS[username]['password'] = generate_password_hash(password)
+                    USERS[username]['needs_change'] = False
+                USERS[username]['role'] = role_val
+                USERS[username]['approved'] = approved
+                USERS[username]['trx'] = trx
+                save_users()
+                return redirect(url_for('admin_users'))
+    role = session.get('role')
+    return render_template('edit_user.html', user_data=user, username=username, year=CURRENT_YEAR, role=role, error=error)
 
 @app.route('/logout')
 def logout():
