@@ -8,8 +8,11 @@
 <body>
 <div class="container radio-case">
 <header class="radio-display">
-    <h1>FT-991A Steuerung</h1>
-    <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
+    <div class="display-row">
+        <h1>FT-991A</h1>
+        <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
+    </div>
+    <div class="freq-display">14.074.000</div>
 </header>
     <p>Angemeldet als {{ user }} ({{ role }})</p>
 <main class="controls">
