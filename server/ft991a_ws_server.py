@@ -3,7 +3,6 @@ import asyncio
 import json
 import serial
 from serial import SerialException
-import sys
 import websockets
 
 DEFAULT_SERIAL_PORT = 'COM3'

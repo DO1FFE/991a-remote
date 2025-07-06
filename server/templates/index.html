@@ -52,7 +52,7 @@
         {% endif %}
     {% endif %}
     {% else %}
-    <p>Kein Ger&auml;t verbunden.</p>
+    <p>Hinweis: Kein TRX verbunden.</p>
     {% endif %}
     {% if (role == 'admin' or approved) and operator == user %}
     <form method="post" action="{{ url_for('command') }}" class="cmdForm">
