@@ -201,6 +201,8 @@ def index():
             else:
                 del ACTIVE_USERS[u]
                 USER_RTT.pop(u, None)
+        if user not in [u for u, _ in active_users]:
+            active_users.append((user, USER_RTT.get(user)))
     return render_template(
         'index.html', rigs=rigs, selected_rig=selected,
         operator=operator, operator_status=operator_status,
@@ -418,6 +420,8 @@ def heartbeat():
 def active_users_api():
     if not session.get('logged_in'):
         return ('', 401)
+    if session.get('role') != 'admin':
+        return ('', 403)
     now = time.time()
     with ACTIVE_LOCK:
         users = []
