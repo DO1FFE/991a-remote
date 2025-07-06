@@ -166,8 +166,8 @@ async def client_loop(uri, handshake):
             async with websockets.connect(uri) as ws:
                 await handle_client(ws, announce=handshake, send_updates=True)
         except Exception:
-            logger.exception('Connection error, retrying in 5 seconds')
-            await asyncio.sleep(5)
+            logger.exception('Connection error, retrying in 1 second')
+            await asyncio.sleep(1)
 
 
 async def main():
