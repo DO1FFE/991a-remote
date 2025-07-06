@@ -6,7 +6,7 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 - `flask_server.py` – Flask-Anwendung mit Login-Schutz und Weboberfläche
 - `trx/ft991a_ws_server.py` – schlanker WebSocket-Server zur CAT-Steuerung auf dem Windows‑Rechner. Er meldet sich mit Benutzerdaten am Flask-Server an und kann wahlweise einen TRX bereitstellen oder als Operator verbinden.
-- `server/templates/` – HTML-Vorlagen für Login und Steuerungsseite
+- `templates/` – HTML-Vorlagen für Login und Steuerungsseite
 - `requirements.txt` – benötigte Python-Pakete
 
 ## Installation

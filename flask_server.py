@@ -35,8 +35,8 @@ RIG_LOCK = threading.Lock()
 OPERATORS = {}
 OPERATOR_LOCK = threading.Lock()
 
-TEMPLATES_DIR = os.path.join(BASE_DIR, 'server', 'templates')
-STATIC_DIR = os.path.join(BASE_DIR, 'server', 'static')
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 app = Flask(__name__, template_folder=TEMPLATES_DIR,
             static_folder=STATIC_DIR)
 DEFAULT_SECRET = 'change-me'
