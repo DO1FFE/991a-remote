@@ -9,7 +9,6 @@ import os
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_WS_PORT = 9001
 DEFAULT_CONNECT_URI = 'ws://991a.lima11.de:8084/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
 
@@ -177,49 +176,30 @@ async def main():
                         help='FT-991A serial port')
     parser.add_argument('--baudrate', type=int, default=DEFAULT_BAUDRATE,
                         help='Serial baud rate')
-    parser.add_argument('--ws-port', type=int, default=DEFAULT_WS_PORT,
-                        help='WebSocket port')
-    parser.add_argument('--connect', default=DEFAULT_CONNECT_URI,
-                        help='Connect to ws://host:port/path instead of serving')
     parser.add_argument('--callsign', default=DEFAULT_CALLSIGN,
                         help='Station callsign to announce')
     parser.add_argument('--username', default=None,
                         help='Username for login')
     parser.add_argument('--password', default=None,
                         help='Password for login')
-    parser.add_argument('--mode', choices=['trx', 'operator'], default='trx',
-                        help='Login mode')
     args = parser.parse_args()
 
     global CALLSIGN
     CALLSIGN = args.callsign
     ser = None
-    if args.mode == 'trx':
-        try:
-            ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
-        except SerialException:
-            print('Hinweis: Kein TRX verbunden.', flush=True)
-            return
     try:
-        poll_task = None
-        if ser and not args.connect:
-            poll_task = asyncio.create_task(poll_trx())
+        ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
+    except SerialException:
+        print('Hinweis: Kein TRX verbunden.', flush=True)
+        return
+    try:
         handshake = {'callsign': CALLSIGN}
         if args.username and args.password:
             handshake.update({'username': args.username,
                               'password': args.password,
-                              'mode': args.mode})
-        if args.connect:
-            await client_loop(args.connect, handshake)
-        else:
-            async with websockets.serve(
-                    lambda ws: handle_client(ws, {'callsign': CALLSIGN}),
-                    '0.0.0.0', args.ws_port):
-                await asyncio.Future()  # run forever
+                              'mode': 'trx'})
+        await client_loop(DEFAULT_CONNECT_URI, handshake)
     finally:
-        if poll_task:
-            poll_task.cancel()
-            await asyncio.gather(poll_task, return_exceptions=True)
         if ser:
             ser.close()
 
