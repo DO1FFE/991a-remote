@@ -62,3 +62,8 @@ Die Implementierung bildet nur grundlegende Funktionen ab und kann als Grundlage
 | `MDxx;` | Betriebsart einstellen (lesen mit `MD;`) |
 | `TX;` | PTT aktivieren |
 | `RX;` | PTT deaktivieren |
+
+Die Weboberfläche nutzt eine PTT-Schaltfläche (oder die Leertaste) zum
+Druck‑und‑Sprech-Betrieb. Beim Drücken wird einmal `TX;` gesendet und beim
+Loslassen automatisch `RX;`. Eine separate "PTT AUS"-Schaltfläche ist daher
+entbehrlich.

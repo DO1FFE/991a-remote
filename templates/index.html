@@ -81,14 +81,7 @@
         {% if (role == 'admin' or approved) %}
         {% set controls_disabled = (not rigs) or operator != user %}
         <div class="control-grid">
-            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <input type="hidden" name="cmd" value="ptt_on">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT EIN</button>
-            </form>
-            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <input type="hidden" name="cmd" value="ptt_off">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT AUS</button>
-            </form>
+            <button id="ptt-btn" type="button" class="ptt-btn" {{ 'disabled' if controls_disabled else '' }}>PTT</button>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>Frequenz (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
                 <input type="hidden" name="cmd" value="frequency">
@@ -271,6 +264,35 @@ document.querySelectorAll('.cmdForm').forEach(f => {
             .then(r => r.text())
             .then(t => { if(t) alert(t); });
     });
+});
+function sendPTT(on){
+    const fd = new FormData();
+    fd.append('cmd', on ? 'ptt_on' : 'ptt_off');
+    fetch('{{ url_for('command') }}', {method: 'POST', body: fd});
+}
+function startPTT(){
+    if(!startPTT.active){
+        sendPTT(true);
+        startPTT.active = true;
+    }
+}
+function stopPTT(){
+    if(startPTT.active){
+        sendPTT(false);
+        startPTT.active = false;
+    }
+}
+const pttBtn=document.getElementById('ptt-btn');
+if(pttBtn){
+    pttBtn.addEventListener('mousedown',()=>{ if(!pttBtn.disabled) startPTT(); });
+    pttBtn.addEventListener('mouseup',stopPTT);
+    pttBtn.addEventListener('mouseleave',stopPTT);
+}
+document.addEventListener('keydown',e=>{
+    if(e.code==='Space' && !e.repeat) startPTT();
+});
+document.addEventListener('keyup',e=>{
+    if(e.code==='Space') stopPTT();
 });
 startStatus();
 </script>
