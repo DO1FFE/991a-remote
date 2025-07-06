@@ -157,7 +157,6 @@
 <script>
 let sock;
 let processor;
-let smTimer;
 function startAudio(){
     sock = new WebSocket('ws://' + location.host + '/ws/audio');
     sock.binaryType = 'arraybuffer';
@@ -196,18 +195,39 @@ function stopAudio(){
     if(processor){ processor.disconnect(); processor=null; }
     if(sock){ sock.close(); sock=null; }
 }
-function updateSM(){
-    fetch('{{ url_for('command') }}', {method:'POST', body:new URLSearchParams({'cmd':'get_smeter'})})
-        .then(r=>r.text()).then(t=>{
-            if(t){
-                const v=parseInt(t.match(/\d+/));
-                const pct=Math.min(100,Math.max(0, (v/255)*100));
-                document.querySelector('.s-meter .bar').style.width=pct+'%';
-            }
-        });
+let statusSock;
+function formatFreq(f){
+    const digits=f.replace(/[^0-9]/g,'');
+    if(digits.length<=3) return digits;
+    let out=digits.slice(-3);
+    let rest=digits.slice(0,-3);
+    if(rest.length>3){
+        out=rest.slice(-3)+'.'+out;
+        rest=rest.slice(0,-3);
+    }
+    if(rest) out=rest+'.'+out;
+    return out;
 }
-function startSM(){ if(!smTimer){ smTimer=setInterval(updateSM,1000); } }
-function stopSM(){ if(smTimer){ clearInterval(smTimer); smTimer=null; } }
+function startStatus(){
+    statusSock=new WebSocket('ws://'+location.host+'/ws/status');
+    statusSock.onmessage=e=>{
+        try{
+            const data=JSON.parse(e.data);
+            const v=data.values||{};
+            if(v.FA){
+                document.querySelector('.freq-display').textContent=formatFreq(v.FA);
+            }
+            if(v.SM){
+                const m=v.SM.match(/\d+/);
+                if(m){
+                    const pct=Math.min(100,Math.max(0,(parseInt(m[0])/255)*100));
+                    document.querySelector('.s-meter .bar').style.width=pct+'%';
+                }
+            }
+        }catch(err){}
+    };
+}
+function stopStatus(){ if(statusSock){ statusSock.close(); statusSock=null; } }
 document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
@@ -216,7 +236,7 @@ document.querySelectorAll('.cmdForm').forEach(f => {
             .then(t => { if(t) alert(t); });
     });
 });
-startSM();
+startStatus();
 </script>
 </body>
 </html>

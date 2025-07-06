@@ -58,77 +58,96 @@ def load_poll_commands():
 
 POLL_COMMANDS = load_poll_commands()
 
-async def poll_trx():
-    """Poll the transceiver for various CAT values."""
+async def poll_trx(send_func=None):
+    """Poll the transceiver for various CAT values and optionally send updates."""
     global LAST_FREQUENCY, LAST_VALUES
     while True:
         await asyncio.sleep(SERIAL_POLLING)
         if ser is None:
             continue
+        changed = {}
         try:
             async with ser_lock:
                 for cmd in POLL_COMMANDS:
                     ser.write(cmd)
                     reply = ser.readline().decode('ascii', errors='ignore').strip()
-                    if reply:
-                        LAST_VALUES[cmd.decode('ascii').strip(';')] = reply
-                        if cmd == b'FA;':
-                            LAST_FREQUENCY = reply
+                    if not reply:
+                        continue
+                    key = cmd.decode('ascii').strip(';')
+                    if LAST_VALUES.get(key) != reply:
+                        LAST_VALUES[key] = reply
+                        changed[key] = reply
+                    if cmd == b'FA;':
+                        LAST_FREQUENCY = reply
         except Exception:
             logger.exception('Polling error')
+        if changed and send_func is not None:
+            try:
+                await send_func(changed)
+            except Exception:
+                logger.exception('Failed to send update')
 
-async def handle_client(websocket, announce=None):
+async def handle_client(websocket, announce=None, send_updates=False):
     if announce is not None:
         await websocket.send(json.dumps(announce))
-    async for message in websocket:
-        data = json.loads(message)
-        cmd = data.get('command')
-        async with ser_lock:
-            if cmd == 'set_frequency':
-                try:
-                    freq = int(data['frequency'])
-                    ser.write(f'FA{freq:011d};'.encode('ascii'))
-                except (KeyError, ValueError):
-                    pass
-            elif cmd == 'set_mode':
-                try:
-                    mode = int(data['mode'])
-                    ser.write(f'MD{mode:02d};'.encode('ascii'))
-                except (KeyError, ValueError):
-                    pass
-            elif cmd == 'ptt_on':
-                ser.write(b'TX;')
-            elif cmd == 'ptt_off':
-                ser.write(b'RX;')
-            elif cmd == 'cat':
-                value = data.get('data', '')
-                if not value.endswith(';'):
-                    value += ';'
-                ser.write(value.encode('ascii'))
-            elif cmd == 'get_frequency':
-                reply = LAST_VALUES.get('FA', LAST_FREQUENCY)
-                if reply is None:
-                    ser.write(b'FA;')
-                    reply = ser.readline().decode('ascii', errors='ignore').strip()
-                await websocket.send(json.dumps({'response': reply}))
-            elif cmd == 'get_mode':
-                reply = LAST_VALUES.get('MD')
-                if reply is None:
-                    ser.write(b'MD;')
-                    reply = ser.readline().decode('ascii', errors='ignore').strip()
-                await websocket.send(json.dumps({'response': reply}))
-            elif cmd == 'get_smeter':
-                reply = LAST_VALUES.get('SM')
-                if reply is None:
-                    ser.write(b'SM;')
-                    reply = ser.readline().decode('ascii', errors='ignore').strip()
-                await websocket.send(json.dumps({'response': reply}))
+    poll_task = None
+    if ser and send_updates:
+        poll_task = asyncio.create_task(
+            poll_trx(lambda vals: websocket.send(json.dumps({'values': vals}))))
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+            cmd = data.get('command')
+            async with ser_lock:
+                if cmd == 'set_frequency':
+                    try:
+                        freq = int(data['frequency'])
+                        ser.write(f'FA{freq:011d};'.encode('ascii'))
+                    except (KeyError, ValueError):
+                        pass
+                elif cmd == 'set_mode':
+                    try:
+                        mode = int(data['mode'])
+                        ser.write(f'MD{mode:02d};'.encode('ascii'))
+                    except (KeyError, ValueError):
+                        pass
+                elif cmd == 'ptt_on':
+                    ser.write(b'TX;')
+                elif cmd == 'ptt_off':
+                    ser.write(b'RX;')
+                elif cmd == 'cat':
+                    value = data.get('data', '')
+                    if not value.endswith(';'):
+                        value += ';'
+                    ser.write(value.encode('ascii'))
+                elif cmd == 'get_frequency':
+                    reply = LAST_VALUES.get('FA', LAST_FREQUENCY)
+                    if reply is None:
+                        ser.write(b'FA;')
+                        reply = ser.readline().decode('ascii', errors='ignore').strip()
+                    await websocket.send(json.dumps({'response': reply}))
+                elif cmd == 'get_mode':
+                    reply = LAST_VALUES.get('MD')
+                    if reply is None:
+                        ser.write(b'MD;')
+                        reply = ser.readline().decode('ascii', errors='ignore').strip()
+                    await websocket.send(json.dumps({'response': reply}))
+                elif cmd == 'get_smeter':
+                    reply = LAST_VALUES.get('SM')
+                    if reply is None:
+                        ser.write(b'SM;')
+                        reply = ser.readline().decode('ascii', errors='ignore').strip()
+                    await websocket.send(json.dumps({'response': reply}))
+    finally:
+        if poll_task:
+            poll_task.cancel()
+            await asyncio.gather(poll_task, return_exceptions=True)
 
 async def client_loop(uri, handshake):
     while True:
         try:
             async with websockets.connect(uri) as ws:
-                await handle_client(ws, announce=handshake)
+                await handle_client(ws, announce=handshake, send_updates=True)
         except Exception:
             logger.exception('Connection error, retrying in 5 seconds')
             await asyncio.sleep(5)
@@ -166,7 +185,7 @@ async def main():
             return
     try:
         poll_task = None
-        if ser:
+        if ser and not args.connect:
             poll_task = asyncio.create_task(poll_trx())
         handshake = {'callsign': CALLSIGN}
         if args.username and args.password:
