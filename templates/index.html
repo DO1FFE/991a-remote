@@ -82,21 +82,46 @@
         {% set controls_disabled = (not rigs) or operator != user %}
         <div class="control-grid">
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="ptt_on">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT EIN</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
+                <input type="hidden" name="cmd" value="ptt_off">
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT AUS</button>
+            </form>
+            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>Frequenz (Hz): <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
                 <input type="hidden" name="cmd" value="frequency">
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Setzen</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <label>Modus-Nr.: <input type="text" name="value"></label>
+                <label>Modus:
+                    <select name="value" {{ 'disabled' if controls_disabled else '' }}>
+                        <option value="01">LSB</option>
+                        <option value="02">USB</option>
+                        <option value="03">CW-U</option>
+                        <option value="04">FM</option>
+                        <option value="05">AM</option>
+                        <option value="06">RTTY-LSB</option>
+                        <option value="07">CW-L</option>
+                        <option value="08">DATA-LSB</option>
+                        <option value="09">RTTY-USB</option>
+                        <option value="0A">DATA-FM</option>
+                        <option value="0B">FM-N</option>
+                        <option value="0C">DATA-USB</option>
+                        <option value="0D">AM-N</option>
+                        <option value="0E">C4FM</option>
+                    </select>
+                </label>
                 <input type="hidden" name="cmd" value="mode">
-                <button type="submit">Modus</button>
+                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>Modus</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <label>Shift:
                     <select name="value" {{ 'disabled' if controls_disabled else '' }}>
                         <option value="0">Simplex</option>
-                        <option value="1">-</option>
-                        <option value="2">+</option>
+                        <option value="1">+</option>
+                        <option value="2">-</option>
                     </select>
                 </label>
                 <input type="hidden" name="cmd" value="shift">
@@ -121,14 +146,6 @@
                 <label>MIC Gain: <input type="text" name="value" {{ 'disabled' if controls_disabled else '' }}></label>
                 <input type="hidden" name="cmd" value="mic_gain">
                 <button type="submit" {{ 'disabled' if controls_disabled else '' }}>MIC Gain</button>
-            </form>
-            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <input type="hidden" name="cmd" value="ptt_on">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT EIN</button>
-            </form>
-            <form method="post" action="{{ url_for('command') }}" class="cmdForm">
-                <input type="hidden" name="cmd" value="ptt_off">
-                <button type="submit" {{ 'disabled' if controls_disabled else '' }}>PTT AUS</button>
             </form>
             <form method="post" action="{{ url_for('command') }}" class="cmdForm">
                 <input type="hidden" name="cmd" value="get_frequency">
