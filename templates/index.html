@@ -467,5 +467,8 @@ document.addEventListener('keyup',e=>{
     if(e.code==='Space') stopPTT();
 });
 startStatus();
+setInterval(()=>{
+    fetch('{{ url_for('heartbeat') }}', {method:'POST'}).catch(()=>{});
+}, 5000);
 </script>
 {% endblock %}
