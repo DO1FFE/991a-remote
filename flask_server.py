@@ -3,6 +3,7 @@ import threading
 import asyncio
 import json
 import os
+import re
 import websockets
 import logging
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
@@ -55,6 +56,17 @@ ACTIVE_LOCK = threading.Lock()
 USER_RTT = {}
 ACTIVE_WS_CLIENTS = set()
 ACTIVE_WS_LOCK = threading.Lock()
+
+GERMAN_PREFIXES = (
+    'DA', 'DB', 'DC', 'DD', 'DF', 'DG', 'DH', 'DJ',
+    'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR'
+)
+CALLSIGN_RE = re.compile(r'^(?:' + '|'.join(GERMAN_PREFIXES) + r')[0-9][A-Z]{1,3}$', re.IGNORECASE)
+
+
+def is_valid_callsign(callsign):
+    """Return True if callsign matches German prefix pattern."""
+    return bool(CALLSIGN_RE.match(callsign))
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -249,7 +261,7 @@ def login():
             if user.get('needs_change'):
                 return redirect(url_for('change_credentials'))
             return redirect(url_for('index'))
-        return render_template('login.html', error='Invalid credentials', year=CURRENT_YEAR)
+        return render_template('login.html', error='Ung\u00fcltige Zugangsdaten', year=CURRENT_YEAR)
     return render_template('login.html', year=CURRENT_YEAR)
 
 
@@ -258,11 +270,11 @@ def register():
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
-        if not username or not password:
-            return render_template('register.html', error='Invalid data', year=CURRENT_YEAR)
+        if not username or not password or not is_valid_callsign(username):
+            return render_template('register.html', error='Ung\u00fcltige Eingabe', year=CURRENT_YEAR)
         with USERS_LOCK:
             if username in USERS:
-                return render_template('register.html', error='User exists', year=CURRENT_YEAR)
+                return render_template('register.html', error='Benutzer existiert bereits', year=CURRENT_YEAR)
             USERS[username] = {
                 'password': generate_password_hash(password),
                 'role': 'operator',
@@ -271,7 +283,7 @@ def register():
                 'trx': False,
             }
             save_users()
-        return render_template('login.html', message='Registration successful. Await approval.', year=CURRENT_YEAR)
+        return render_template('login.html', message='Registrierung erfolgreich. Freischaltung abwarten.', year=CURRENT_YEAR)
     return render_template('register.html', year=CURRENT_YEAR)
 
 
@@ -286,11 +298,11 @@ def change_credentials():
     if request.method == 'POST':
         new_username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
-        if not new_username or not password:
-            return render_template('change_credentials.html', error='Invalid data', year=CURRENT_YEAR)
+        if not new_username or not password or not is_valid_callsign(new_username):
+            return render_template('change_credentials.html', error='Ung\u00fcltige Eingabe', year=CURRENT_YEAR)
         with USERS_LOCK:
             if new_username != username and new_username in USERS:
-                return render_template('change_credentials.html', error='User exists', year=CURRENT_YEAR)
+                return render_template('change_credentials.html', error='Benutzer existiert bereits', year=CURRENT_YEAR)
             user['password'] = generate_password_hash(password)
             user['needs_change'] = False
             if new_username != username:
@@ -356,7 +368,9 @@ def admin_edit_user(username):
         trx = request.form.get('trx') == '1'
         with USERS_LOCK:
             if new_username != username and new_username in USERS:
-                error = 'User exists'
+                error = 'Benutzer existiert bereits'
+            elif new_username and not is_valid_callsign(new_username):
+                error = 'Ung\u00fcltige Eingabe'
             else:
                 if new_username != username:
                     USERS[new_username] = USERS.pop(username)

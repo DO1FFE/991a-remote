@@ -51,7 +51,7 @@ Funkgeräts selbst und wird daher immer im TRX-Modus betrieben.
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
-2. Benutzer registrieren sich über die Weboberfläche mit ihrem Rufzeichen und einem Passwort. Erst nach Freischaltung durch einen Administrator dürfen sie das Gerät als Operator bedienen. Bis dahin können sie lediglich im SWL-Modus zuhören.
+2. Benutzer registrieren sich über die Weboberfläche mit ihrem Rufzeichen und einem Passwort. Der Benutzername muss einem gültigen deutschen Amateurfunkrufzeichen entsprechen. Erst nach Freischaltung durch einen Administrator dürfen sie das Gerät als Operator bedienen. Bis dahin können sie lediglich im SWL-Modus zuhören.
 
 Die Implementierung bildet nur grundlegende Funktionen ab und kann als Grundlage für eigene Erweiterungen dienen.
 
