@@ -53,6 +53,8 @@ STATUS_LOCK = threading.Lock()
 ACTIVE_USERS = {}
 ACTIVE_LOCK = threading.Lock()
 USER_RTT = {}
+ACTIVE_WS_CLIENTS = set()
+ACTIVE_WS_LOCK = threading.Lock()
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -76,6 +78,28 @@ def broadcast(update):
                 remove.append(ws)
         for ws in remove:
             STATUS_CLIENTS.discard(ws)
+
+
+def broadcast_active_users():
+    now = time.time()
+    with ACTIVE_LOCK:
+        users = []
+        for u, ts in list(ACTIVE_USERS.items()):
+            if now - ts < 10:
+                users.append((u, USER_RTT.get(u)))
+            else:
+                del ACTIVE_USERS[u]
+                USER_RTT.pop(u, None)
+    data = json.dumps({'active_users': users})
+    remove = []
+    with ACTIVE_WS_LOCK:
+        for ws in list(ACTIVE_WS_CLIENTS):
+            try:
+                ws.send(data)
+            except Exception:
+                remove.append(ws)
+        for ws in remove:
+            ACTIVE_WS_CLIENTS.discard(ws)
 
 
 def load_users():
@@ -414,6 +438,7 @@ def heartbeat():
         ACTIVE_USERS[user] = time.time()
         if rtt is not None:
             USER_RTT[user] = rtt
+    broadcast_active_users()
     return ('', 204)
 
 @app.route('/active_users')
@@ -693,6 +718,31 @@ def status(ws):
     finally:
         with STATUS_LOCK:
             STATUS_CLIENTS.discard(ws)
+
+
+@sock.route('/ws/active_users')
+def active_users_ws(ws):
+    if session.get('role') != 'admin':
+        ws.close()
+        return
+    with ACTIVE_WS_LOCK:
+        ACTIVE_WS_CLIENTS.add(ws)
+    # send initial list
+    now = time.time()
+    with ACTIVE_LOCK:
+        users = []
+        for u, ts in list(ACTIVE_USERS.items()):
+            if now - ts < 10:
+                users.append((u, USER_RTT.get(u)))
+    try:
+        ws.send(json.dumps({'active_users': users}))
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+    finally:
+        with ACTIVE_WS_LOCK:
+            ACTIVE_WS_CLIENTS.discard(ws)
 
 def main():
     global REMOTE_SERVER

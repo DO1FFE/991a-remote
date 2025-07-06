@@ -440,6 +440,33 @@ function stopStatus(){
     if(statusRetry){ clearTimeout(statusRetry); statusRetry=null; }
     if(statusSock){ statusSock.close(); statusSock=null; }
 }
+let activeSock;
+let activeRetry;
+function startActiveUsers(){
+    const p=document.querySelector('.online-users');
+    if(!p) return;
+    function connect(){
+        activeSock=new WebSocket('ws://'+location.host+'/ws/active_users');
+        activeSock.onclose=()=>{ activeRetry = setTimeout(connect, 1000); };
+        activeSock.onerror=()=>{ if(activeSock.readyState!==WebSocket.CLOSED) activeSock.close(); };
+        activeSock.onmessage=e=>{
+            try{
+                const data=JSON.parse(e.data);
+                const users=data.active_users||[];
+                if(users.length){
+                    p.textContent='Online: '+users.map(u=>`${u[0]} (${u[1]!==null?Math.floor(u[1])+' ms':'-'})`).join(', ');
+                }else{
+                    p.textContent='Online: keiner';
+                }
+            }catch(err){}
+        };
+    }
+    connect();
+}
+function stopActiveUsers(){
+    if(activeRetry){ clearTimeout(activeRetry); activeRetry=null; }
+    if(activeSock){ activeSock.close(); activeSock=null; }
+}
 document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
@@ -478,6 +505,7 @@ document.addEventListener('keyup',e=>{
     if(e.code==='Space') stopPTT();
 });
 startStatus();
+startActiveUsers();
 let lastRtt = null;
 async function ping(){
     const start = performance.now();
@@ -489,16 +517,6 @@ async function ping(){
             body: JSON.stringify({rtt:lastRtt})
         });
         lastRtt = Math.round(performance.now() - start);
-        const r = await fetch('{{ url_for('active_users_api') }}', {credentials:'same-origin'});
-        const users = await r.json();
-        const p=document.querySelector('.online-users');
-        if(p){
-            if(users.length){
-                p.textContent='Online: '+users.map(u=>`${u[0]} (${u[1]!==null?Math.floor(u[1])+' ms':'-'})`).join(', ');
-            }else{
-                p.textContent='Online: keiner';
-            }
-        }
         const infoRes = await fetch('{{ url_for('status_info') }}', {credentials:'same-origin'});
         const info = await infoRes.json();
         const rigSel = document.querySelector('#rig-select select[name="rig"]');
