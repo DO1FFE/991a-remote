@@ -74,3 +74,22 @@ Die Weboberfläche nutzt eine PTT-Schaltfläche (oder die Leertaste) zum
 Druck‑und‑Sprech-Betrieb. Beim Drücken wird einmal `TX;` gesendet und beim
 Loslassen automatisch `RX;`. Eine separate "PTT AUS"-Schaltfläche ist daher
 entbehrlich.
+
+## Erstellung von Windows-EXE-Dateien
+
+Um die beiden Programme im Verzeichnis `trx` ohne Python-Installation ausführen zu können, lassen sie sich mit [PyInstaller](https://pyinstaller.org/) in eigenständige EXE-Dateien umwandeln.
+
+1. PyInstaller installieren:
+   ```bash
+   pip install pyinstaller
+   ```
+2. Kommandozeilen-Version bauen:
+   ```bash
+   pyinstaller --onefile trx/ft991a_ws_server.py
+   ```
+   Die Datei befindet sich danach im Ordner `dist`.
+3. GUI-Version ohne Konsolenfenster bauen:
+   ```bash
+   pyinstaller --onefile --windowed trx/trx_gui.py
+   ```
+   Auch hier liegt das Ergebnis im Ordner `dist`.
