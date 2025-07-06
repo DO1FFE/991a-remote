@@ -364,6 +364,7 @@
 {% block scripts %}
 <script>
 const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+const isOperator = {{ 'true' if operator==user else 'false' }};
 let sock;
 let processor;
 let audioRetry;
@@ -377,22 +378,25 @@ function startAudio(){
             if(processor){ processor.disconnect(); processor=null; }
             audioRetry = setTimeout(connect, 1000);
         };
-        navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
-            const source = audioCtx.createMediaStreamSource(stream);
-            processor = audioCtx.createScriptProcessor(1024,1,1);
-            source.connect(processor);
-            processor.connect(audioCtx.destination);
-        processor.onaudioprocess = e=>{
-            const input=e.inputBuffer.getChannelData(0);
-            const buf=new ArrayBuffer(input.length*2);
-            const view=new DataView(buf);
-            for(let i=0;i<input.length;i++){
-                let s=Math.max(-1,Math.min(1,input[i]));
-                view.setInt16(i*2,s*0x7FFF,true);
-            }
-            if(sock.readyState===WebSocket.OPEN) sock.send(buf);
-        };
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
+        if(isOperator){
+            navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{ 
+                const source = audioCtx.createMediaStreamSource(stream);
+                processor = audioCtx.createScriptProcessor(1024,1,1);
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+                processor.onaudioprocess = e=>{
+                    const input=e.inputBuffer.getChannelData(0);
+                    const buf=new ArrayBuffer(input.length*2);
+                    const view=new DataView(buf);
+                    for(let i=0;i<input.length;i++){
+                        let s=Math.max(-1,Math.min(1,input[i]));
+                        view.setInt16(i*2,s*0x7FFF,true);
+                    }
+                    if(sock.readyState===WebSocket.OPEN) sock.send(buf);
+                };
+            });
+        }
         sock.onmessage=event=>{
             if(!muted){
                 const view=new DataView(event.data);
@@ -408,7 +412,6 @@ function startAudio(){
                 bs.start();
             }
         };
-        });
     }
     connect();
 }
