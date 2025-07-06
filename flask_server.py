@@ -662,8 +662,6 @@ def main():
                         help='Serial baud rate')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
                         help='Remote control server ws://host:port')
-    parser.add_argument('--http-port', type=int, default=8084,
-                        help='Port for the web interface')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
                         help='Flask secret key')
     parser.add_argument('--input-device', type=int, default=None,
@@ -695,7 +693,8 @@ def main():
     else:
         ser = serial.Serial(SERIAL_PORT, SERIAL_BAUDRATE, timeout=1)
     try:
-        app.run(host='0.0.0.0', port=args.http_port)
+        # The web interface always runs on port 8084
+        app.run(host='0.0.0.0', port=8084)
     finally:
         if ser:
             ser.close()

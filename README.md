@@ -46,7 +46,7 @@ python trx/ft991a_ws_server.py --connect ws://991a.lima11.de:8084/ws/rig \
    ```bash
    python flask_server.py
    ```
-   Mit dem Parameter `--server` kann optional ein externer Dienst angesprochen werden. Die Anwendung läuft auf Port 8084 (anpassbar mit `--http-port`).
+   Mit dem Parameter `--server` kann optional ein externer Dienst angesprochen werden. Die Anwendung läuft immer auf Port 8084.
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
     Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
     Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen.
