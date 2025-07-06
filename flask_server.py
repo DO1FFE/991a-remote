@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import websockets
+import logging
 from flask import Flask, render_template, request, redirect, session, url_for
 import datetime
 from flask_sock import Sock
@@ -12,6 +13,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pyaudio
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(BASE_DIR, 'error.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
@@ -90,6 +103,7 @@ def rig(ws):
         password = data.get('password')
         mode = data.get('mode', 'trx')
     except Exception:
+        logger.exception('Invalid handshake received')
         ws.close()
         return
     if not username or not password:
@@ -557,6 +571,7 @@ def audio(ws):
             try:
                 ws.send(data)
             except Exception:
+                logger.exception('Failed to send audio chunk')
                 break
 
     t = threading.Thread(target=send_audio, daemon=True)
@@ -568,7 +583,7 @@ def audio(ws):
                 break
             output_stream.write(msg)
     except Exception:
-        pass
+        logger.exception('Audio websocket error')
     finally:
         running = False
         input_stream.close()

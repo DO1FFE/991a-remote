@@ -4,12 +4,28 @@ import json
 import serial
 from serial import SerialException
 import websockets
+import logging
+import os
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
 DEFAULT_WS_PORT = 9001
 DEFAULT_CONNECT_URI = 'ws://991a.lima11.de:8084/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(BASE_DIR, 'error.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 ser = None
 ser_lock = asyncio.Lock()
@@ -58,6 +74,7 @@ async def client_loop(uri, handshake):
             async with websockets.connect(uri) as ws:
                 await handle_client(ws, announce=handshake)
         except Exception:
+            logger.exception('Connection error, retrying in 5 seconds')
             await asyncio.sleep(5)
 
 
