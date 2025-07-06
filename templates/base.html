@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container {% block container_class %}{% endblock %}">
+    <header class="{% block header_class %}{% endblock %}">
+        <h1>{% block header_title %}{% endblock %}</h1>
+        {% block nav %}{% endblock %}
+    </header>
+    {% block content %}{% endblock %}
+    <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

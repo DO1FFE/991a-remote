@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Benutzerverwaltung</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<div class="container">
-    <h1>Benutzerverwaltung</h1>
-    <p><a href="{{ url_for('logout') }}">Abmelden</a> | <a href="{{ url_for('index') }}">Startseite</a></p>
+{% extends 'base.html' %}
+{% block title %}Benutzerverwaltung{% endblock %}
+{% block header_title %}Benutzerverwaltung{% endblock %}
+{% block nav %}<p><a href="{{ url_for('logout') }}">Abmelden</a> | <a href="{{ url_for('index') }}">Startseite</a></p>{% endblock %}
+{% block content %}
     <p>Angemeldet als {{ session.get('user') }} ({{ role }})</p>
     <table border="1">
         <tr><th>Benutzer</th><th>Rolle</th><th>Freigeschaltet</th><th>TRX</th><th>Aktionen</th><th>Bearbeiten</th></tr>
@@ -44,7 +39,4 @@
         {% endfor %}
     </table>
     <p><a href="{{ url_for('index') }}">Zur&uuml;ck</a></p>
-    <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
-</div>
-</body>
-</html>
+{% endblock %}
