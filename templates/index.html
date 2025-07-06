@@ -482,19 +482,21 @@ let lastRtt = null;
 async function ping(){
     const start = performance.now();
     try{
-        await fetch('{{ url_for('heartbeat') }}', {
+        const res = await fetch('{{ url_for('heartbeat') }}', {
             method:'POST',
             credentials:'same-origin',
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({rtt:lastRtt})
         });
         lastRtt = Math.round(performance.now() - start);
-        await fetch('{{ url_for('heartbeat') }}', {
-            method:'POST',
-            credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({rtt:lastRtt})
-        });
+        if(res.ok){
+            await fetch('{{ url_for('heartbeat') }}', {
+                method:'POST',
+                credentials:'same-origin',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({rtt:lastRtt})
+            });
+        }
         const r = await fetch('{{ url_for('active_users_api') }}', {credentials:'same-origin'});
         const users = await r.json();
         const p=document.querySelector('.online-users');
