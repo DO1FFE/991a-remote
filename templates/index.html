@@ -158,15 +158,21 @@
 <script>
 let sock;
 let processor;
+let audioRetry;
 function startAudio(){
-    sock = new WebSocket('ws://' + location.host + '/ws/audio');
-    sock.binaryType = 'arraybuffer';
-    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
-        const source = audioCtx.createMediaStreamSource(stream);
-        processor = audioCtx.createScriptProcessor(1024,1,1);
-        source.connect(processor);
-        processor.connect(audioCtx.destination);
+    function connect(){
+        sock = new WebSocket('ws://' + location.host + '/ws/audio');
+        sock.binaryType = 'arraybuffer';
+        sock.onclose = () => {
+            if(processor){ processor.disconnect(); processor=null; }
+            audioRetry = setTimeout(connect, 1000);
+        };
+        navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
+            const source = audioCtx.createMediaStreamSource(stream);
+            processor = audioCtx.createScriptProcessor(1024,1,1);
+            source.connect(processor);
+            processor.connect(audioCtx.destination);
         processor.onaudioprocess = e=>{
             const input=e.inputBuffer.getChannelData(0);
             const buf=new ArrayBuffer(input.length*2);
@@ -190,13 +196,17 @@ function startAudio(){
             bs.connect(audioCtx.destination);
             bs.start();
         };
-    });
+        });
+    }
+    connect();
 }
 function stopAudio(){
+    if(audioRetry){ clearTimeout(audioRetry); audioRetry=null; }
     if(processor){ processor.disconnect(); processor=null; }
     if(sock){ sock.close(); sock=null; }
 }
 let statusSock;
+let statusRetry;
 function formatFreq(f){
     const digits=f.replace(/[^0-9]/g,'');
     if(digits.length<=3) return digits;
@@ -210,28 +220,36 @@ function formatFreq(f){
     return out;
 }
 function startStatus(){
-    statusSock=new WebSocket('ws://'+location.host+'/ws/status');
-    statusSock.onmessage=e=>{
-        try{
-            const data=JSON.parse(e.data);
-            const v=data.values||{};
-            if(v.FA){
-                document.querySelector('.freq-display').textContent=formatFreq(v.FA);
-            }
-            if(v.SM){
-                const m=v.SM.match(/\d+/);
-                if(m){
-                    const pct=Math.min(100,Math.max(0,(parseInt(m[0])/255)*100));
-                    document.querySelector('.s-meter .bar').style.width=pct+'%';
+    function connect(){
+        statusSock=new WebSocket('ws://'+location.host+'/ws/status');
+        statusSock.onclose=()=>{ statusRetry = setTimeout(connect, 1000); };
+        statusSock.onerror=()=>{ if(statusSock.readyState!==WebSocket.CLOSED) statusSock.close(); };
+        statusSock.onmessage=e=>{
+            try{
+                const data=JSON.parse(e.data);
+                const v=data.values||{};
+                if(v.FA){
+                    document.querySelector('.freq-display').textContent=formatFreq(v.FA);
                 }
-            }
-            if(v.RTT!==undefined){
-                document.querySelector('.rtt-display').textContent = 'RTT: '+v.RTT+' ms';
-            }
-        }catch(err){}
-    };
+                if(v.SM){
+                    const m=v.SM.match(/\d+/);
+                    if(m){
+                        const pct=Math.min(100,Math.max(0,(parseInt(m[0])/255)*100));
+                        document.querySelector('.s-meter .bar').style.width=pct+'%';
+                    }
+                }
+                if(v.RTT!==undefined){
+                    document.querySelector('.rtt-display').textContent = 'RTT: '+v.RTT+' ms';
+                }
+            }catch(err){}
+        };
+    }
+    connect();
 }
-function stopStatus(){ if(statusSock){ statusSock.close(); statusSock=null; } }
+function stopStatus(){
+    if(statusRetry){ clearTimeout(statusRetry); statusRetry=null; }
+    if(statusSock){ statusSock.close(); statusSock=null; }
+}
 document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
