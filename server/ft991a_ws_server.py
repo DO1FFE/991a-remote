@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import json
 import serial
+from serial import SerialException
+import sys
 import websockets
 
 DEFAULT_SERIAL_PORT = 'COM3'
@@ -85,7 +87,11 @@ async def main():
     CALLSIGN = args.callsign
     ser = None
     if args.mode == 'trx':
-        ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
+        try:
+            ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
+        except SerialException:
+            print('Hinweis: Kein TRX verbunden.', flush=True)
+            return
     try:
         handshake = {'callsign': CALLSIGN}
         if args.username and args.password:
