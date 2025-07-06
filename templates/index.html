@@ -477,16 +477,18 @@ document.addEventListener('keyup',e=>{
 });
 startStatus();
 let lastRtt = null;
-setInterval(()=>{
+async function ping(){
     const start = performance.now();
-    fetch('{{ url_for('heartbeat') }}', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({rtt:lastRtt})
-    }).then(()=>{
+    try{
+        await fetch('{{ url_for('heartbeat') }}', {
+            method:'POST',
+            credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({rtt:lastRtt})
+        });
         lastRtt = Math.round(performance.now() - start);
-        return fetch('{{ url_for('active_users_api') }}');
-    }).then(r=>r.json()).then(users=>{
+        const r = await fetch('{{ url_for('active_users_api') }}', {credentials:'same-origin'});
+        const users = await r.json();
         const p=document.querySelector('.online-users');
         if(p){
             if(users.length){
@@ -495,7 +497,9 @@ setInterval(()=>{
                 p.textContent='Online: keiner';
             }
         }
-    }).catch(()=>{});
-}, 5000);
+    }catch(e){}
+}
+ping();
+setInterval(ping, 5000);
 </script>
 {% endblock %}

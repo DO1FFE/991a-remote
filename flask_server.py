@@ -10,7 +10,10 @@ import datetime
 import time
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
-import pyaudio
+try:
+    import pyaudio
+except ImportError:  # pragma: no cover - optional dependency
+    pyaudio = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, 'error.log')
@@ -34,7 +37,7 @@ USERS_LOCK = threading.Lock()
 
 REMOTE_SERVER = None
 AUDIO_RATE = 16000
-AUDIO_FORMAT = pyaudio.paInt16
+AUDIO_FORMAT = pyaudio.paInt16 if pyaudio else 8  # 8 == paInt16
 CHANNELS = 1
 CHUNK = 1024
 INPUT_DEVICE_INDEX = None
@@ -603,6 +606,9 @@ def command():
 
 @sock.route('/ws/audio')
 def audio(ws):
+    if pyaudio is None:
+        ws.close()
+        return
     p = pyaudio.PyAudio()
     input_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
                           input=True, frames_per_buffer=CHUNK,
@@ -677,11 +683,14 @@ def main():
     OUTPUT_DEVICE_INDEX = args.output_device
 
     if args.list_devices:
-        p = pyaudio.PyAudio()
-        for i in range(p.get_device_count()):
-            info = p.get_device_info_by_index(i)
-            print(f"{i}: {info['name']}")
-        p.terminate()
+        if pyaudio is None:
+            print('pyaudio not installed')
+        else:
+            p = pyaudio.PyAudio()
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                print(f"{i}: {info['name']}")
+            p.terminate()
         return
 
     REMOTE_SERVER = args.server
