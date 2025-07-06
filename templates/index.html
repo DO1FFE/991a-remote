@@ -485,6 +485,16 @@ setInterval(()=>{
         body: JSON.stringify({rtt:lastRtt})
     }).then(()=>{
         lastRtt = Math.round(performance.now() - start);
+        return fetch('{{ url_for('active_users_api') }}');
+    }).then(r=>r.json()).then(users=>{
+        const p=document.querySelector('.online-users');
+        if(p){
+            if(users.length){
+                p.textContent='Online: '+users.map(u=>`${u[0]} (${u[1]!==null?Math.floor(u[1])+' ms':'-'})`).join(', ');
+            }else{
+                p.textContent='Online: keiner';
+            }
+        }
     }).catch(()=>{});
 }, 5000);
 </script>

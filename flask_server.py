@@ -5,7 +5,7 @@ import json
 import os
 import websockets
 import logging
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import datetime
 import time
 from flask_sock import Sock
@@ -410,6 +410,21 @@ def heartbeat():
         if rtt is not None:
             USER_RTT[user] = rtt
     return ('', 204)
+
+@app.route('/active_users')
+def active_users_api():
+    if not session.get('logged_in'):
+        return ('', 401)
+    now = time.time()
+    with ACTIVE_LOCK:
+        users = []
+        for u, ts in list(ACTIVE_USERS.items()):
+            if now - ts < 10:
+                users.append((u, USER_RTT.get(u)))
+            else:
+                del ACTIVE_USERS[u]
+                USER_RTT.pop(u, None)
+    return jsonify(users)
 
 @app.route('/command', methods=['POST'])
 def command():
