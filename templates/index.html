@@ -357,6 +357,7 @@
         <div class="audio-controls">
             <button onclick="startAudio()">Audio starten</button>
             <button onclick="stopAudio()">Audio stoppen</button>
+            <label><input type="checkbox" id="mute-audio" onchange="toggleMute()">Mute</label>
         </div>
     </main>
 {% endblock %}
@@ -366,6 +367,8 @@ const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
 let sock;
 let processor;
 let audioRetry;
+let muted=false;
+function toggleMute(){ muted = document.getElementById('mute-audio').checked; }
 function startAudio(){
     function connect(){
         sock = new WebSocket(wsProto + '://' + location.host + '/ws/audio');
@@ -391,17 +394,19 @@ function startAudio(){
             if(sock.readyState===WebSocket.OPEN) sock.send(buf);
         };
         sock.onmessage=event=>{
-            const view=new DataView(event.data);
-            const floats=new Float32Array(view.byteLength/2);
-            for(let i=0;i<floats.length;i++){
-                floats[i]=view.getInt16(i*2,true)/0x8000;
+            if(!muted){
+                const view=new DataView(event.data);
+                const floats=new Float32Array(view.byteLength/2);
+                for(let i=0;i<floats.length;i++){
+                    floats[i]=view.getInt16(i*2,true)/0x8000;
+                }
+                const buffer=audioCtx.createBuffer(1,floats.length,16000);
+                buffer.getChannelData(0).set(floats);
+                const bs=audioCtx.createBufferSource();
+                bs.buffer=buffer;
+                bs.connect(audioCtx.destination);
+                bs.start();
             }
-            const buffer=audioCtx.createBuffer(1,floats.length,16000);
-            buffer.getChannelData(0).set(floats);
-            const bs=audioCtx.createBufferSource();
-            bs.buffer=buffer;
-            bs.connect(audioCtx.destination);
-            bs.start();
         };
         });
     }
