@@ -47,7 +47,7 @@ Funkgeräts selbst und wird daher immer im TRX-Modus betrieben.
    Mit dem Parameter `--server` kann optional ein externer Dienst angesprochen werden. Die Anwendung läuft immer auf Port 8084.
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
     Weitere Benutzer können sich anschließend selbst registrieren und müssen vom Administrator freigeschaltet werden, bevor sie das Gerät bedienen dürfen.
-    Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen.
+    Nur Administratoren dürfen neue Benutzer freischalten oder ihnen das Recht zur Nutzung eines TRX erteilen. Administratoren können auch direkt neue Konten anlegen und dabei beliebige Benutzernamen verwenden.
    Über `--list-devices` lassen sich verfügbare Audio‑Geräte anzeigen. Mit
    `--input-device` und `--output-device` kann anschließend die gewünschte
    Geräte‑Nummer gewählt werden.
