@@ -433,6 +433,34 @@ def active_users_api():
                 USER_RTT.pop(u, None)
     return jsonify(users)
 
+@app.route('/status_info')
+def status_info():
+    if not session.get('logged_in'):
+        return ('', 401)
+    with RIG_LOCK:
+        rigs = list(RIGS.keys())
+    selected = session.get('rig')
+    if selected not in rigs and rigs:
+        selected = rigs[0]
+        session['rig'] = selected
+    with OPERATOR_LOCK:
+        operator = OPERATORS.get(selected)
+    operator_status = None
+    if operator:
+        with USERS_LOCK:
+            op_data = USERS.get(operator)
+        if op_data:
+            if op_data.get('role') == 'admin' or op_data.get('approved'):
+                operator_status = 'Operator'
+            else:
+                operator_status = 'SWL'
+    return jsonify({
+        'rigs': rigs,
+        'selected': selected,
+        'operator': operator,
+        'operator_status': operator_status
+    })
+
 @app.route('/command', methods=['POST'])
 def command():
     if not session.get('logged_in'):
