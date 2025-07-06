@@ -1,16 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>FT-991A Steuerung</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<div class="container radio-case ft991a">
-    <header class="rig-header">
-        <h1>FT-991A</h1>
-        <nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>
-    </header>
+{% extends 'base.html' %}
+{% block title %}FT-991A Steuerung{% endblock %}
+{% block container_class %}radio-case ft991a{% endblock %}
+{% block header_class %}rig-header{% endblock %}
+{% block header_title %}FT-991A{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a>{% endif %}</nav>{% endblock %}
+{% block content %}
     {% if role == 'admin' and unapproved_count %}
     <p class="warn">{{ unapproved_count }} Benutzer warten auf Freischaltung.</p>
     {% endif %}
@@ -156,8 +150,8 @@
             <button onclick="stopAudio()">Audio stoppen</button>
         </div>
     </main>
-    <footer>&copy; {{ year }} by Erik Schauer, do1ffe@darc.de</footer>
-</div>
+{% endblock %}
+{% block scripts %}
 <script>
 let sock;
 let processor;
@@ -263,5 +257,4 @@ document.querySelectorAll('.cmdForm').forEach(f => {
 });
 startStatus();
 </script>
-</body>
-</html>
+{% endblock %}
