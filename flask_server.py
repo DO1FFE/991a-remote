@@ -99,7 +99,7 @@ def _get_github_version():
 
 
 GITHUB_VERSION = _get_github_version()
-PROGRAM_VERSION = f'FT-991A-Remote 0.1.{GITHUB_VERSION}'
+PROGRAM_VERSION = f'FT-991A-Remote V0.1.{GITHUB_VERSION}'
 
 sock = Sock(app)
 
