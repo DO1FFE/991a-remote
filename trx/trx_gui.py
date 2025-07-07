@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import json
 import os
 import threading
@@ -98,8 +98,12 @@ class App:
             self.output_combo.current(self.out_var.get())
 
         row = 6
-        self.start_btn = ttk.Button(frame, text='START', command=self.start)
+        self.start_btn = ttk.Button(frame, text='Remote starten', command=self.start)
         self.start_btn.grid(row=row, column=0, columnspan=2, pady=5)
+        row += 1
+
+        self.stop_btn = ttk.Button(frame, text='Remote beenden', command=self.stop)
+        self.stop_btn.grid(row=row, column=0, columnspan=2, pady=5)
         row += 1
 
         ttk.Label(frame, text='Verbundene Nutzer:').grid(row=row, column=0, sticky='nw')
@@ -137,6 +141,21 @@ class App:
         self.ws_thread = threading.Thread(target=self.run_async, args=(cfg,), daemon=True)
         self.ws_thread.start()
         self.poll_queue()
+
+    def stop(self):
+        if not messagebox.askyesno('Remote beenden',
+                                   'Sind Sie sicher, das Programm zu beenden?'):
+            return
+        self.stop_event.set()
+        if self.ws_thread and self.ws_thread.is_alive():
+            self.ws_thread.join(timeout=1)
+        if trx.ser:
+            try:
+                trx.ser.close()
+            except Exception:
+                pass
+            trx.ser = None
+        self.root.destroy()
 
     def poll_queue(self):
         try:
@@ -204,7 +223,8 @@ class App:
 
 def main():
     root = tk.Tk()
-    App(root)
+    app = App(root)
+    root.protocol('WM_DELETE_WINDOW', app.stop)
     root.mainloop()
 
 
