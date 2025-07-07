@@ -27,15 +27,16 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
    eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch über
    `wss://991a.lima11.de:8084/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
  ```bash
- python trx/ft991a_ws_server.py --serial-port COM3 \
-      --callsign MYCALL --username MYCALL --password secret \
-      --server wss://991a.lima11.de:8084/ws/rig
+python trx/ft991a_ws_server.py --serial-port COM3 \
+     --baudrate 9600 \
+     --callsign MYCALL --username MYCALL --password secret \
+     --server wss://991a.lima11.de:8084/ws/rig
  ```
- Alternativ kann `python trx/trx_gui.py` verwendet werden. Die Oberfläche
- speichert Zugangsdaten sowie Audio- und COM-Port-Auswahl und startet den
- Dienst nach Klick auf **START**. In einem kleinen Fenster werden dabei nur
- die Nutzer angezeigt, die gerade diesen TRX verwenden.
-  Der COM‑Port ist ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
+Alternativ kann `python trx/trx_gui.py` verwendet werden. Die Oberfläche
+speichert Zugangsdaten sowie Audio-, COM-Port- und Baudrate-Auswahl und startet den
+Dienst nach Klick auf **START**. In einem kleinen Fenster werden dabei nur
+die Nutzer angezeigt, die gerade diesen TRX verwenden.
+ Der COM‑Port und die Baudrate sind ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
 
 ### Nutzung als Operator
 
