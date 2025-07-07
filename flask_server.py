@@ -89,10 +89,10 @@ EU_BERLIN = ZoneInfo('Europe/Berlin')
 
 
 def _get_github_version():
-    """Return short commit hash for current Git revision."""
+    """Return Git commit count for current revision."""
     try:
         return subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD'], cwd=BASE_DIR
+            ['git', 'rev-list', '--count', 'HEAD'], cwd=BASE_DIR
         ).decode().strip()
     except Exception:
         return 'unknown'

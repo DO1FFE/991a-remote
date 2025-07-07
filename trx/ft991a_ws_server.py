@@ -6,6 +6,7 @@ from serial import SerialException
 import websockets
 import logging
 import os
+import subprocess
 try:
     import pyaudio
 except ImportError:  # pragma: no cover
@@ -22,7 +23,22 @@ CHANNELS = 1
 CHUNK = 1024
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_FILE = os.path.join(BASE_DIR, 'error.log')
+
+
+def _get_github_version():
+    """Return Git commit count for current revision."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-list', '--count', 'HEAD'], cwd=ROOT_DIR
+        ).decode().strip()
+    except Exception:
+        return 'unknown'
+
+
+GITHUB_VERSION = _get_github_version()
+PROGRAM_VERSION = f'FT-991A-Remote V0.1.{GITHUB_VERSION}'
 
 logging.basicConfig(
     level=logging.INFO,
