@@ -71,6 +71,13 @@ class App:
         self.port_combo.grid(row=row, column=1, sticky='w')
         row += 1
 
+        ttk.Label(frame, text='Baudrate').grid(row=row, column=0, sticky='e')
+        self.baud_var = tk.StringVar(value=str(cfg.get('baudrate', trx.DEFAULT_BAUDRATE)))
+        baudrates = ["9600", "19200", "38400", "57600", "115200"]
+        self.baud_combo = ttk.Combobox(frame, textvariable=self.baud_var, values=baudrates, width=15)
+        self.baud_combo.grid(row=row, column=1, sticky='w')
+        row += 1
+
         ttk.Label(frame, text='Input-Audio').grid(row=row, column=0, sticky='e')
         self.in_var = tk.IntVar(value=cfg.get('input_device', -1))
         ttk.Label(frame, textvariable=tk.StringVar()).grid(row=row, column=2)
@@ -119,6 +126,7 @@ class App:
             self.user_var.get().strip(),
             self.pw_var.get(),
             self.port_var.get().strip(),
+            self.baud_combo.get(),
             self.input_combo.get(),
             self.output_combo.get(),
         ])
@@ -133,6 +141,7 @@ class App:
             'username': self.user_var.get().strip(),
             'password': self.pw_var.get(),
             'serial_port': self.port_var.get().strip(),
+            'baudrate': int(self.baud_combo.get()),
             'input_device': int(self.input_combo.get().split(':')[0]),
             'output_device': int(self.output_combo.get().split(':')[0]),
         }
@@ -177,7 +186,8 @@ class App:
     async def async_main(self, cfg):
         trx.CALLSIGN = cfg['callsign']
         try:
-            trx.ser = serial.Serial(cfg['serial_port'], trx.DEFAULT_BAUDRATE, timeout=1)
+            baud = cfg.get('baudrate', trx.DEFAULT_BAUDRATE)
+            trx.ser = serial.Serial(cfg['serial_port'], baud, timeout=1)
         except SerialException:
             self.queue.put(('users', ['Kein TRX verbunden']))
             return
