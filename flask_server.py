@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, redirect, session, url_for, j
 import datetime
 import time
 from zoneinfo import ZoneInfo
+import subprocess
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
 try:
@@ -85,6 +86,20 @@ DEFAULT_SECRET = 'change-me'
 app.secret_key = DEFAULT_SECRET
 CURRENT_YEAR = datetime.datetime.now().year
 EU_BERLIN = ZoneInfo('Europe/Berlin')
+
+
+def _get_github_version():
+    """Return short commit hash for current Git revision."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], cwd=BASE_DIR
+        ).decode().strip()
+    except Exception:
+        return 'unknown'
+
+
+GITHUB_VERSION = _get_github_version()
+PROGRAM_VERSION = f'FT-991A-Remote 0.1.{GITHUB_VERSION}'
 
 sock = Sock(app)
 
@@ -388,7 +403,7 @@ def index():
         user=user, role=role,
         approved=approved, unapproved_count=unapproved_count,
         active_users=active_users, memories=memories,
-        year=CURRENT_YEAR)
+        year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -407,8 +422,9 @@ def login():
             if user.get('needs_change'):
                 return redirect(url_for('change_credentials'))
             return redirect(url_for('index'))
-        return render_template('login.html', error='Ung\u00fcltige Zugangsdaten', year=CURRENT_YEAR)
-    return render_template('login.html', year=CURRENT_YEAR)
+        return render_template('login.html', error='Ung\u00fcltige Zugangsdaten',
+                               year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
+    return render_template('login.html', year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -417,10 +433,12 @@ def register():
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
         if not username or not password or not is_valid_callsign(username):
-            return render_template('register.html', error='Ung\u00fcltige Eingabe', year=CURRENT_YEAR)
+            return render_template('register.html', error='Ung\u00fcltige Eingabe',
+                                   year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
         with USERS_LOCK:
             if username in USERS:
-                return render_template('register.html', error='Benutzer existiert bereits', year=CURRENT_YEAR)
+                return render_template('register.html', error='Benutzer existiert bereits',
+                                       year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
             USERS[username] = {
                 'password': generate_password_hash(password),
                 'role': 'operator',
@@ -429,8 +447,9 @@ def register():
                 'trx': False,
             }
             save_users()
-        return render_template('login.html', message='Registrierung erfolgreich. Freischaltung abwarten.', year=CURRENT_YEAR)
-    return render_template('register.html', year=CURRENT_YEAR)
+        return render_template('login.html', message='Registrierung erfolgreich. Freischaltung abwarten.',
+                               year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
+    return render_template('register.html', year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
 
 
 @app.route('/change_credentials', methods=['GET', 'POST'])
@@ -447,10 +466,12 @@ def change_credentials():
         if not new_username or not password or (
             new_username != username and session.get('role') != 'admin' and not is_valid_callsign(new_username)
         ):
-            return render_template('change_credentials.html', error='Ung\u00fcltige Eingabe', year=CURRENT_YEAR)
+            return render_template('change_credentials.html', error='Ung\u00fcltige Eingabe',
+                                   year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
         with USERS_LOCK:
             if new_username != username and new_username in USERS:
-                return render_template('change_credentials.html', error='Benutzer existiert bereits', year=CURRENT_YEAR)
+                return render_template('change_credentials.html', error='Benutzer existiert bereits',
+                                       year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
             user['password'] = generate_password_hash(password)
             user['needs_change'] = False
             if new_username != username:
@@ -460,7 +481,8 @@ def change_credentials():
         save_users()
         return redirect(url_for('index'))
     role = session.get('role')
-    return render_template('change_credentials.html', current=username, year=CURRENT_YEAR, role=role)
+    return render_template('change_credentials.html', current=username, year=CURRENT_YEAR,
+                           role=role, program_version=PROGRAM_VERSION)
 
 
 @app.route('/admin/users', methods=['GET', 'POST'])
@@ -510,7 +532,8 @@ def admin_users():
                 info['last_login_local'] = ts
         else:
             info['last_login_local'] = '-'
-    return render_template('userlist.html', users=users_copy, year=CURRENT_YEAR, role=role)
+    return render_template('userlist.html', users=users_copy, year=CURRENT_YEAR,
+                           role=role, program_version=PROGRAM_VERSION)
 
 
 @app.route('/admin/create_user', methods=['GET', 'POST'])
@@ -550,7 +573,8 @@ def admin_create_user():
         user_data['approved'] = approved
         user_data['trx'] = trx
     role = session.get('role')
-    return render_template('create_user.html', user_data=user_data, year=CURRENT_YEAR, role=role, error=error)
+    return render_template('create_user.html', user_data=user_data, year=CURRENT_YEAR,
+                           role=role, error=error, program_version=PROGRAM_VERSION)
 
 
 @app.route('/admin/user/<username>', methods=['GET', 'POST'])
@@ -592,7 +616,9 @@ def admin_edit_user(username):
                 save_users()
                 return redirect(url_for('admin_users'))
     role = session.get('role')
-    return render_template('edit_user.html', user_data=user, username=username, year=CURRENT_YEAR, role=role, error=error)
+    return render_template('edit_user.html', user_data=user, username=username,
+                           year=CURRENT_YEAR, role=role, error=error,
+                           program_version=PROGRAM_VERSION)
 
 @app.route('/logout')
 def logout():
@@ -734,7 +760,7 @@ def show_answers():
     role = session.get('role')
     answers = load_saved_answers()
     return render_template('answers.html', answers=answers, role=role,
-                           year=CURRENT_YEAR)
+                           year=CURRENT_YEAR, program_version=PROGRAM_VERSION)
 
 
 @app.route('/fetch_answers')

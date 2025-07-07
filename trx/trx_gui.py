@@ -9,10 +9,29 @@ import serial.tools.list_ports
 import pyaudio
 import websockets
 from serial import SerialException
+import datetime
+import subprocess
 
 import ft991a_ws_server as trx
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CURRENT_YEAR = datetime.datetime.now().year
+
+
+def _get_github_version():
+    """Return short commit hash for current Git revision."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT_DIR
+        ).decode().strip()
+    except Exception:
+        return 'unknown'
+
+
+GITHUB_VERSION = _get_github_version()
+PROGRAM_VERSION = f'FT-991A-Remote 0.1.{GITHUB_VERSION}'
 
 
 def load_config():
@@ -31,7 +50,7 @@ def save_config(cfg):
 class App:
     def __init__(self, root):
         self.root = root
-        root.title('FT-991A Verbindung')
+        root.title(PROGRAM_VERSION)
         cfg = load_config()
 
         self.queue = Queue()
@@ -116,6 +135,10 @@ class App:
         ttk.Label(frame, text='Verbundene Nutzer:').grid(row=row, column=0, sticky='nw')
         self.users_text = tk.Text(frame, width=40, height=5, state='disabled')
         self.users_text.grid(row=row, column=1, sticky='w')
+        row += 1
+
+        ttk.Label(frame, text=f"{PROGRAM_VERSION} - © {CURRENT_YEAR} Erik Schauer, do1ffe@darc.de")\
+            .grid(row=row, column=0, columnspan=2, pady=5)
 
         self.validate()
 
