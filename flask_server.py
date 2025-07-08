@@ -231,9 +231,9 @@ def load_users():
     if os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'r', encoding='utf-8') as f:
             USERS = json.load(f)
-        for u in USERS.values():
-            if 'trx' not in u:
-                u['trx'] = False
+        for name, info in USERS.items():
+            if 'trx' not in info:
+                info['trx'] = name == 'admin'
     else:
         USERS = {
             'admin': {
@@ -241,7 +241,7 @@ def load_users():
                 'role': 'admin',
                 'approved': True,
                 'needs_change': True,
-                'trx': False,
+                'trx': True,
             }
         }
         save_users()
@@ -1116,10 +1116,18 @@ def main():
             print('pyaudio not installed')
         else:
             p = pyaudio.PyAudio()
+            print('Input-Devices:')
             for i in range(p.get_device_count()):
                 info = p.get_device_info_by_index(i)
-                name = _decode_device_name(info['name'])
-                print(f"{i}: {name}")
+                if info.get('maxInputChannels', 0) > 0:
+                    name = _decode_device_name(info['name'])
+                    print(f"  {i}: {name}")
+            print('\nOutput-Devices:')
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                if info.get('maxOutputChannels', 0) > 0:
+                    name = _decode_device_name(info['name'])
+                    print(f"  {i}: {name}")
             p.terminate()
         return
 
