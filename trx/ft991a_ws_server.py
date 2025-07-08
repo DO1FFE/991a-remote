@@ -60,6 +60,66 @@ LAST_VALUES = {}
 MEMORY_CHANNELS = []
 
 
+class DummySerial:
+    """Einfache Simulation eines FT-991A.
+
+    Dieses Dummy-Geraet speichert intern Frequenz, Modus und PTT-Status und
+    liefert auf einfache CAT-Befehle plausible Antworten. So kann der
+    Websocket-Server auch ohne angeschlossenes Funkgeraet getestet werden.
+    """
+
+    def __init__(self):
+        self.frequency = 7100000  # 7.100 MHz als Startfrequenz
+        self.mode = 1             # LSB
+        self.ptt = False
+        self._responses = []
+
+    def write(self, data):
+        """Verarbeite eingehende CAT-Befehle."""
+        if isinstance(data, bytes):
+            data = data.decode('ascii', errors='ignore')
+        for cmd in data.split(';'):
+            if not cmd:
+                continue
+            if cmd.startswith('FA'):
+                if len(cmd) == 2:
+                    self._responses.append(f'{self.frequency:011d};'.encode('ascii'))
+                else:
+                    try:
+                        self.frequency = int(cmd[2:])
+                    except ValueError:
+                        pass
+            elif cmd.startswith('MD'):
+                if len(cmd) == 2:
+                    self._responses.append(f'{self.mode:02d};'.encode('ascii'))
+                else:
+                    try:
+                        self.mode = int(cmd[2:])
+                    except ValueError:
+                        pass
+            elif cmd == 'SM':
+                self._responses.append(b'0050;')
+            elif cmd.startswith('MR'):
+                self._responses.append(b'0')  # Speicher leer
+            elif cmd == 'TX':
+                self.ptt = True
+            elif cmd == 'RX':
+                self.ptt = False
+            else:
+                # Fuer unbekannte Befehle eine generische OK-Antwort
+                self._responses.append(b'')
+
+    def readline(self):
+        """Gebe vorbereitete Antwort zurueck."""
+        if self._responses:
+            return self._responses.pop(0)
+        return b''
+
+    def close(self):
+        """Kein spezieller Aufraeumvorgang notwendig."""
+        pass
+
+
 def load_poll_commands():
     """Load CAT commands that allow reading or answering."""
     commands = []
@@ -276,8 +336,8 @@ async def main():
     try:
         ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
     except SerialException:
-        print('Hinweis: Kein TRX verbunden.', flush=True)
-        return
+        print('Hinweis: Kein TRX gefunden, Dummy wird verwendet.', flush=True)
+        ser = DummySerial()
     try:
         handshake = {'callsign': CALLSIGN}
         if args.username and args.password:

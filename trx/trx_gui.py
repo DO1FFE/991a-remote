@@ -224,8 +224,8 @@ class App:
             baud = cfg.get('baudrate', trx.DEFAULT_BAUDRATE)
             trx.ser = serial.Serial(cfg['serial_port'], baud, timeout=1)
         except SerialException:
-            self.queue.put(('users', ['Kein TRX verbunden']))
-            return
+            self.queue.put(('users', ['Dummy-TRX aktiv']))
+            trx.ser = trx.DummySerial()
         handshake = {
             'callsign': cfg['callsign'],
             'username': cfg['username'],
