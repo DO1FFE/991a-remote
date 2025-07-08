@@ -86,6 +86,8 @@ RIG_AUDIO = {}
 RIG_AUDIO_LOCK = threading.Lock()
 AUDIO_CLIENTS = {}
 AUDIO_CLIENTS_LOCK = threading.Lock()
+RIG_LIST_CLIENTS = set()
+RIG_LIST_LOCK = threading.Lock()
 
 GERMAN_PREFIXES = (
     'DA', 'DB', 'DC', 'DD', 'DF', 'DG', 'DH', 'DJ',
@@ -238,6 +240,22 @@ def broadcast_active_users():
             ACTIVE_WS_CLIENTS.discard(ws)
 
 
+def broadcast_rig_list():
+    """Aktuelle Liste verbundener TRX an alle Clients senden."""
+    with RIG_LOCK:
+        rigs = list(RIGS.keys())
+    data = json.dumps({'rigs': rigs})
+    remove = []
+    with RIG_LIST_LOCK:
+        for ws in list(RIG_LIST_CLIENTS):
+            try:
+                ws.send(data)
+            except Exception:
+                remove.append(ws)
+        for ws in remove:
+            RIG_LIST_CLIENTS.discard(ws)
+
+
 def load_users():
     global USERS
     if os.path.exists(USERS_FILE):
@@ -300,6 +318,7 @@ def rig(ws):
     if mode == 'trx':
         with RIG_LOCK:
             RIGS[callsign] = ws
+        broadcast_rig_list()
     try:
         while True:
             msg = ws.receive()
@@ -326,6 +345,7 @@ def rig(ws):
             with RIG_LOCK:
                 if RIGS.get(callsign) is ws:
                     del RIGS[callsign]
+                    broadcast_rig_list()
             with VALUES_LOCK:
                 RIG_VALUES.pop(callsign, None)
             with MEMORY_LOCK:
@@ -1106,6 +1126,24 @@ def active_users_ws(ws):
     finally:
         with ACTIVE_WS_LOCK:
             ACTIVE_WS_CLIENTS.discard(ws)
+
+
+@sock.route('/ws/rig_list')
+def rig_list_ws(ws):
+    """Sende laufend die Liste verbundener TRX."""
+    with RIG_LIST_LOCK:
+        RIG_LIST_CLIENTS.add(ws)
+    with RIG_LOCK:
+        rigs = list(RIGS.keys())
+    try:
+        ws.send(json.dumps({'rigs': rigs}))
+        while True:
+            msg = ws.receive()
+            if msg is None:
+                break
+    finally:
+        with RIG_LIST_LOCK:
+            RIG_LIST_CLIENTS.discard(ws)
 
 def main():
     global REMOTE_SERVER

@@ -527,6 +527,52 @@ function stopActiveUsers(){
     if(activeRetry){ clearTimeout(activeRetry); activeRetry=null; }
     if(activeSock){ activeSock.close(); activeSock=null; }
 }
+let rigListSock;
+let rigListRetry;
+function startRigList(){
+    const rigSel=document.querySelector('#rig-select select[name="rig"]');
+    if(!rigSel) return;
+    function connect(){
+        rigListSock=new WebSocket(wsProto+'://'+location.host+'/ws/rig_list');
+        rigListSock.onclose=()=>{ rigListRetry=setTimeout(connect,1000); };
+        rigListSock.onerror=()=>{ if(rigListSock.readyState!==WebSocket.CLOSED) rigListSock.close(); };
+        rigListSock.onmessage=e=>{
+            try{
+                const data=JSON.parse(e.data);
+                if(Array.isArray(data.rigs)){
+                    const cur=rigSel.value;
+                    rigSel.innerHTML='';
+                    if(!data.rigs.length){
+                        rigSel.disabled=true;
+                        if(!document.getElementById('no-rig-msg')){
+                            const p=document.createElement('p');
+                            p.id='no-rig-msg';
+                            p.textContent='Hinweis: Kein TRX verbunden.';
+                            document.getElementById('rig-select').insertBefore(p, rigSel.form.nextSibling);
+                        }
+                    }else{
+                        rigSel.disabled=false;
+                        const msg=document.getElementById('no-rig-msg');
+                        if(msg) msg.remove();
+                    }
+                    data.rigs.forEach(r=>{
+                        const opt=document.createElement('option');
+                        opt.value=r;
+                        opt.textContent=r;
+                        rigSel.appendChild(opt);
+                    });
+                    if(data.rigs.includes(cur)) rigSel.value=cur; else rigSel.value='';
+                    rigSel.onchange();
+                }
+            }catch(err){}
+        };
+    }
+    connect();
+}
+function stopRigList(){
+    if(rigListRetry){ clearTimeout(rigListRetry); rigListRetry=null; }
+    if(rigListSock){ rigListSock.close(); rigListSock=null; }
+}
 document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
@@ -566,6 +612,7 @@ document.addEventListener('keyup',e=>{
 });
 startStatus();
 startActiveUsers();
+startRigList();
 let lastRtt = null;
 async function ping(){
     const start = performance.now();
