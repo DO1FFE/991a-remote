@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import subprocess
 from flask_sock import Sock
 from werkzeug.security import generate_password_hash, check_password_hash
+import locale
 try:
     import pyaudio
 except ImportError:  # pragma: no cover - optional dependency
@@ -31,6 +32,18 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_device_name(name):
+    """Geraetenamen robust in Unicode wandeln."""
+    if isinstance(name, bytes):
+        for enc in ('utf-8', locale.getpreferredencoding(False), 'cp1252'):
+            try:
+                return name.decode(enc)
+            except Exception:
+                pass
+        return name.decode('utf-8', errors='replace')
+    return str(name)
 
 DEFAULT_REMOTE_SERVER = None
 
@@ -1105,7 +1118,8 @@ def main():
             p = pyaudio.PyAudio()
             for i in range(p.get_device_count()):
                 info = p.get_device_info_by_index(i)
-                print(f"{i}: {info['name']}")
+                name = _decode_device_name(info['name'])
+                print(f"{i}: {name}")
             p.terminate()
         return
 
