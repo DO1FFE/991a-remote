@@ -385,11 +385,11 @@ def index():
     with RIG_LOCK:
         rigs = list(RIGS.keys())
     selected = session.get('rig')
-    if selected not in rigs and rigs:
-        selected = rigs[0]
-        session['rig'] = selected
+    if selected not in rigs:
+        selected = None
+        session.pop('rig', None)
     user = session.get('user')
-    if user:
+    if user and selected:
         with USER_RIG_LOCK:
             USER_RIG[user] = selected
     role = session.get('role')
@@ -665,13 +665,17 @@ def select_rig():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     rig = request.form.get('rig')
+    user = session.get('user')
     with RIG_LOCK:
         if rig in RIGS:
             session['rig'] = rig
-            user = session.get('user')
             if user:
                 with USER_RIG_LOCK:
                     USER_RIG[user] = rig
+    if rig in RIGS and user and has_operator_rights():
+        with OPERATOR_LOCK:
+            if OPERATORS.get(rig) is None:
+                OPERATORS[rig] = user
     return redirect(url_for('index'))
 
 @app.route('/take_control', methods=['POST'])
@@ -749,11 +753,11 @@ def status_info():
     with RIG_LOCK:
         rigs = list(RIGS.keys())
     selected = session.get('rig')
-    if selected not in rigs and rigs:
-        selected = rigs[0]
-        session['rig'] = selected
+    if selected not in rigs:
+        selected = None
+        session.pop('rig', None)
     user = session.get('user')
-    if user:
+    if user and selected:
         with USER_RIG_LOCK:
             USER_RIG[user] = selected
     with OPERATOR_LOCK:
