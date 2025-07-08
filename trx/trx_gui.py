@@ -100,11 +100,13 @@ class App:
         ttk.Label(frame, text='Input-Audio').grid(row=row, column=0, sticky='e')
         self.in_var = tk.IntVar(value=cfg.get('input_device', -1))
         ttk.Label(frame, textvariable=tk.StringVar()).grid(row=row, column=2)
+        input_row = row
         row += 1
 
         ttk.Label(frame, text='Output-Audio').grid(row=row, column=0, sticky='e')
         self.out_var = tk.IntVar(value=cfg.get('output_device', -1))
         ttk.Label(frame, textvariable=tk.StringVar()).grid(row=row, column=2)
+        output_row = row
         row += 1
 
         # build audio device combos after obtaining device list
@@ -115,15 +117,14 @@ class App:
             devices.append(f"{i}: {info['name']}")
         p.terminate()
         self.input_combo = ttk.Combobox(frame, values=devices, width=40)
-        self.input_combo.grid(row=4, column=1, sticky='w')
+        self.input_combo.grid(row=input_row, column=1, sticky='w')
         if 0 <= self.in_var.get() < len(devices):
             self.input_combo.current(self.in_var.get())
         self.output_combo = ttk.Combobox(frame, values=devices, width=40)
-        self.output_combo.grid(row=5, column=1, sticky='w')
+        self.output_combo.grid(row=output_row, column=1, sticky='w')
         if 0 <= self.out_var.get() < len(devices):
             self.output_combo.current(self.out_var.get())
 
-        row = 6
         self.start_btn = ttk.Button(frame, text='Remote starten', command=self.start)
         self.start_btn.grid(row=row, column=0, columnspan=2, pady=5)
         row += 1
