@@ -109,21 +109,32 @@ class App:
         output_row = row
         row += 1
 
-        # build audio device combos after obtaining device list
+        # Audio-Geraetelisten getrennt nach Input und Output erstellen
         p = pyaudio.PyAudio()
-        devices = []
+        input_devices = []
+        output_devices = []
         for i in range(p.get_device_count()):
             info = p.get_device_info_by_index(i)
-            devices.append(f"{i}: {info['name']}")
+            entry = f"{i}: {info['name']}"
+            if info.get('maxInputChannels', 0) > 0:
+                input_devices.append(entry)
+            if info.get('maxOutputChannels', 0) > 0:
+                output_devices.append(entry)
         p.terminate()
-        self.input_combo = ttk.Combobox(frame, values=devices, width=40)
+
+        self.input_combo = ttk.Combobox(frame, values=input_devices, width=40)
         self.input_combo.grid(row=input_row, column=1, sticky='w')
-        if 0 <= self.in_var.get() < len(devices):
-            self.input_combo.current(self.in_var.get())
-        self.output_combo = ttk.Combobox(frame, values=devices, width=40)
+        for pos, dev in enumerate(input_devices):
+            if int(dev.split(':')[0]) == self.in_var.get():
+                self.input_combo.current(pos)
+                break
+
+        self.output_combo = ttk.Combobox(frame, values=output_devices, width=40)
         self.output_combo.grid(row=output_row, column=1, sticky='w')
-        if 0 <= self.out_var.get() < len(devices):
-            self.output_combo.current(self.out_var.get())
+        for pos, dev in enumerate(output_devices):
+            if int(dev.split(':')[0]) == self.out_var.get():
+                self.output_combo.current(pos)
+                break
 
         self.start_btn = ttk.Button(frame, text='Remote starten', command=self.start)
         self.start_btn.grid(row=row, column=0, columnspan=2, pady=5)
