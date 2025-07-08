@@ -56,12 +56,14 @@
             <form method="post" action="{{ url_for('select_rig') }}" class="cmdForm">
                 <label>Ger&auml;t:
                     <select name="rig" {% if not rigs %}disabled{% endif %}>
+                    {% if not selected_rig %}
+                        <option value="" selected>-- w&auml;hlen --</option>
+                    {% endif %}
                     {% for r in rigs %}
                         <option value="{{ r }}" {% if r==selected_rig %}selected{% endif %}>{{ r }}</option>
                     {% endfor %}
                     </select>
                 </label>
-                <button type="submit" {% if not rigs %}disabled{% endif %}>Ausw&auml;hlen</button>
             </form>
             {% if not rigs %}
             <p id="no-rig-msg">Hinweis: Kein TRX verbunden.</p>
@@ -364,7 +366,8 @@
 {% block scripts %}
 <script>
 const wsProto = 'ws';
-const isOperator = {{ 'true' if operator==user else 'false' }};
+const currentUser = '{{ user }}';
+let isOperator = {{ 'true' if operator==user else 'false' }};
 let sock;
 let processor;
 let audioRetry;
@@ -579,6 +582,13 @@ async function ping(){
         const rigSel = document.querySelector('#rig-select select[name="rig"]');
         if(rigSel){
             rigSel.innerHTML = '';
+            if(info.selected === null){
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '-- wählen --';
+                opt.selected = true;
+                rigSel.appendChild(opt);
+            }
             info.rigs.forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r;
@@ -586,15 +596,12 @@ async function ping(){
                 if(r === info.selected) opt.selected = true;
                 rigSel.appendChild(opt);
             });
-            const btn = rigSel.form.querySelector('button');
             if(info.rigs.length){
                 rigSel.disabled = false;
-                if(btn) btn.disabled = false;
                 const msg = document.getElementById('no-rig-msg');
                 if(msg) msg.remove();
             }else{
                 rigSel.disabled = true;
-                if(btn) btn.disabled = true;
                 if(!document.getElementById('no-rig-msg')){
                     const pmsg = document.createElement('p');
                     pmsg.id = 'no-rig-msg';
@@ -602,6 +609,11 @@ async function ping(){
                     document.getElementById('rig-select').insertBefore(pmsg, rigSel.form.nextSibling);
                 }
             }
+            rigSel.onchange = () => {
+                const fd = new FormData();
+                fd.append('rig', rigSel.value);
+                fetch('{{ url_for('select_rig') }}', {method:'POST', body: fd}).then(() => ping());
+            };
         }
         const memSel = document.querySelector('#memory-select select[name="value"]');
         if(memSel){
@@ -637,9 +649,19 @@ async function ping(){
                 op.textContent = 'Bediener: keiner';
             }
         }
+        isOperator = info.operator === currentUser;
     }catch(e){}
 }
 ping();
 setInterval(ping, 5000);
+
+const rigSelectInit = document.querySelector('#rig-select select[name="rig"]');
+if(rigSelectInit){
+    rigSelectInit.onchange = () => {
+        const fd = new FormData();
+        fd.append('rig', rigSelectInit.value);
+        fetch('{{ url_for('select_rig') }}', {method:'POST', body: fd}).then(() => ping());
+    };
+}
 </script>
 {% endblock %}
