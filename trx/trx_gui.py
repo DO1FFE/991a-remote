@@ -43,8 +43,9 @@ def load_config():
 
 
 def save_config(cfg):
+    """Konfiguration UTF-8 speichern."""
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump(cfg, f)
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
 
 
 class App:
@@ -115,21 +116,26 @@ class App:
         output_devices = []
         for i in range(p.get_device_count()):
             info = p.get_device_info_by_index(i)
-            entry = f"{i}: {info['name']}"
+            name = info['name']
+            if isinstance(name, bytes):
+                name = name.decode('utf-8', errors='replace')
+            entry = f"{i}: {name}"
             if info.get('maxInputChannels', 0) > 0:
                 input_devices.append(entry)
             if info.get('maxOutputChannels', 0) > 0:
                 output_devices.append(entry)
         p.terminate()
 
-        self.input_combo = ttk.Combobox(frame, values=input_devices, width=40)
+        input_width = max((len(d) for d in input_devices), default=40)
+        self.input_combo = ttk.Combobox(frame, values=input_devices, width=input_width)
         self.input_combo.grid(row=input_row, column=1, sticky='w')
         for pos, dev in enumerate(input_devices):
             if int(dev.split(':')[0]) == self.in_var.get():
                 self.input_combo.current(pos)
                 break
 
-        self.output_combo = ttk.Combobox(frame, values=output_devices, width=40)
+        output_width = max((len(d) for d in output_devices), default=40)
+        self.output_combo = ttk.Combobox(frame, values=output_devices, width=output_width)
         self.output_combo.grid(row=output_row, column=1, sticky='w')
         for pos, dev in enumerate(output_devices):
             if int(dev.split(':')[0]) == self.out_var.get():

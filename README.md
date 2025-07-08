@@ -25,12 +25,12 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
 
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
    eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch über
-   `wss://991a.lima11.de:8084/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
+   `ws://991a.lima11.de:8084/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
  ```bash
 python trx/ft991a_ws_server.py --serial-port COM3 \
      --baudrate 9600 \
      --callsign MYCALL --username MYCALL --password secret \
-     --server wss://991a.lima11.de:8084/ws/rig
+     --server ws://991a.lima11.de:8084/ws/rig
  ```
 Alternativ kann `python trx/trx_gui.py` verwendet werden. Die Oberfläche
 speichert Zugangsdaten sowie Audio-, COM-Port- und Baudrate-Auswahl und startet den
