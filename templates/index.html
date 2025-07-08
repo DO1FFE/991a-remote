@@ -363,7 +363,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+const wsProto = 'ws';
 const isOperator = {{ 'true' if operator==user else 'false' }};
 let sock;
 let processor;
