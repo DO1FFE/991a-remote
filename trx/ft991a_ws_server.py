@@ -73,6 +73,12 @@ class DummySerial:
         self.mode = 1             # LSB
         self.ptt = False
         self._responses = []
+        # Einige vordefinierte Speicherkanaele
+        self.memories = {
+            0: (145500000, 4),  # 145.500 MHz FM
+            1: (7100000, 1),    # 7.100 MHz LSB
+            2: (144800000, 2),  # 144.800 MHz USB
+        }
 
     def write(self, data):
         """Verarbeite eingehende CAT-Befehle."""
@@ -100,7 +106,23 @@ class DummySerial:
             elif cmd == 'SM':
                 self._responses.append(b'0050;')
             elif cmd.startswith('MR'):
-                self._responses.append(b'0')  # Speicher leer
+                try:
+                    idx = int(cmd[2:5])
+                except ValueError:
+                    idx = None
+                if idx is not None and idx in self.memories:
+                    freq, mode = self.memories[idx]
+                    self._responses.append(
+                        f'FA{freq:011d};MD{mode:02d};'.encode('ascii'))
+                else:
+                    self._responses.append(b'0')  # Speicher leer
+            elif cmd.startswith('MC'):
+                try:
+                    idx = int(cmd[2:5])
+                    if idx in self.memories:
+                        self.frequency, self.mode = self.memories[idx]
+                except ValueError:
+                    pass
             elif cmd == 'TX':
                 self.ptt = True
             elif cmd == 'RX':
