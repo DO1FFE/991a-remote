@@ -19,6 +19,13 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     pyaudio = None
 
+# Rollenhierarchie:
+# - Admin: darf alles
+# - Operator: darf TRX bedienen
+# - SWL: registrierter Benutzer ohne Freischaltung (nur Zuhören)
+# - Nicht freigeschaltet: Konto angelegt, aber noch nicht bestätigt
+# Für das Bedienen eines TRX ist mindestens Operator erforderlich.
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, 'error.log')
 
@@ -90,6 +97,11 @@ CALLSIGN_RE = re.compile(r'^(?:' + '|'.join(GERMAN_PREFIXES) + r')[0-9][A-Z]{1,3
 def is_valid_callsign(callsign):
     """Return True if callsign matches German prefix pattern."""
     return bool(CALLSIGN_RE.match(callsign))
+
+
+def has_operator_rights():
+    """True, wenn der angemeldete Nutzer einen TRX bedienen darf."""
+    return session.get('role') == 'admin' or session.get('approved')
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -666,7 +678,7 @@ def select_rig():
 def take_control():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    if not session.get('approved') and session.get('role') != 'admin':
+    if not has_operator_rights():
         return redirect(url_for('index'))
     rig = session.get('rig')
     user = session.get('user')
@@ -680,7 +692,7 @@ def take_control():
 def release_control():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    if not session.get('approved') and session.get('role') != 'admin':
+    if not has_operator_rights():
         return redirect(url_for('index'))
     rig = session.get('rig')
     user = session.get('user')
@@ -790,7 +802,7 @@ def fetch_answers_route():
 def command():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    if not session.get('approved') and session.get('role') != 'admin':
+    if not has_operator_rights():
         return ('', 403)
     user = session.get('user')
     rig = session.get('rig')

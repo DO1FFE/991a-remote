@@ -19,6 +19,18 @@ Dieses Projekt stellt eine einfach zu bedienende Weboberfläche zur Fernsteuerun
    ```
 3. Optional: Serielle Schnittstelle, Audio-Geräte und Zugangsdaten können beim Start der Anwendung angegeben werden.
 
+## Benutzerrollen
+
+Die Anwendung unterscheidet vier Hierarchiestufen:
+
+1. **Admin** – hat volle Rechte und darf Benutzer freischalten.
+2. **Operator** – darf einen TRX bedienen.
+3. **SWL** – registrierter Benutzer ohne Freischaltung, kann nur zuhören.
+4. **Nicht freigeschaltet** – Konto angelegt, aber noch nicht bestätigt.
+
+Ein TRX lässt sich nur mit der Rolle *Operator* oder *Admin* steuern.
+Administratoren besitzen automatisch alle Operatorrechte.
+
 ## Nutzung
 
 ### Server am Funkgerät (Windows)
