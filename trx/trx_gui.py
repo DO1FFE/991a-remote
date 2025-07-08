@@ -11,6 +11,7 @@ import websockets
 from serial import SerialException
 import datetime
 import subprocess
+import locale
 
 import ft991a_ws_server as trx
 
@@ -32,6 +33,18 @@ def _get_github_version():
 
 GITHUB_VERSION = _get_github_version()
 PROGRAM_VERSION = f'FT-991A-Remote V0.1.{GITHUB_VERSION}'
+
+
+def _decode_device_name(name):
+    """Geraetenamen robust in Unicode wandeln."""
+    if isinstance(name, bytes):
+        for enc in ('utf-8', locale.getpreferredencoding(False), 'cp1252'):
+            try:
+                return name.decode(enc)
+            except Exception:
+                pass
+        return name.decode('utf-8', errors='replace')
+    return str(name)
 
 
 def load_config():
@@ -116,9 +129,7 @@ class App:
         output_devices = []
         for i in range(p.get_device_count()):
             info = p.get_device_info_by_index(i)
-            name = info['name']
-            if isinstance(name, bytes):
-                name = name.decode('utf-8', errors='replace')
+            name = _decode_device_name(info['name'])
             entry = f"{i}: {name}"
             if info.get('maxInputChannels', 0) > 0:
                 input_devices.append(entry)
