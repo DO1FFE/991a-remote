@@ -222,7 +222,9 @@ async def read_memory_channels():
                 ser.write(f'MR{i:03d};'.encode('ascii'))
                 try:
                     raw = ser.readline()
-                except (TypeError, SerialException):
+                except (AttributeError, TypeError, SerialException):
+                    # PySerial wirft mitunter AttributeError, wenn die
+                    # Schnittstelle unerwartet geschlossen wurde.
                     logger.warning('Serial read failed during memory scan')
                     break
                 reply = raw.decode('ascii', errors='ignore').strip()
