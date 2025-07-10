@@ -346,8 +346,10 @@ async def client_loop(uri, handshake):
         try:
             async with ws_connect(uri) as ws:
                 await handle_client(ws, announce=handshake, send_updates=True)
-        except Exception:
-            logger.exception('Connection error, retrying in 1 second')
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning('Connection error (%s), retrying in 1 second', exc)
             await asyncio.sleep(1)
 
 
@@ -377,8 +379,10 @@ async def audio_loop(uri, handshake, input_dev=None, output_dev=None):
                         out_stream.write(msg)
 
                 await asyncio.gather(sender(), receiver())
-        except Exception:
-            logger.exception('Audio connection error, retrying in 1 second')
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning('Audio connection error (%s), retrying in 1 second', exc)
             await asyncio.sleep(1)
 
 
