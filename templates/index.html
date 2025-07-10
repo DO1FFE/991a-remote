@@ -577,7 +577,13 @@ document.querySelectorAll('.cmdForm').forEach(f => {
     f.addEventListener('submit', e => {
         e.preventDefault();
         fetch(f.action, {method:'POST', body:new FormData(f)})
-            .then(r => r.text())
+            .then(r => {
+                if(r.redirected){
+                    window.location.href = r.url;
+                    return '';
+                }
+                return r.text();
+            })
             .then(t => { if(t) alert(t); });
     });
 });
