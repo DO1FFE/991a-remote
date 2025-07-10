@@ -193,7 +193,12 @@ async def read_memory_channels():
         async with ser_lock:
             for i in range(125):
                 ser.write(f'MR{i:03d};'.encode('ascii'))
-                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                try:
+                    raw = ser.readline()
+                except (TypeError, SerialException):
+                    logger.warning('Serial read failed during memory scan')
+                    break
+                reply = raw.decode('ascii', errors='ignore').strip()
                 if reply and any(ch != '0' for ch in reply):
                     memories.append(i)
     except Exception:
