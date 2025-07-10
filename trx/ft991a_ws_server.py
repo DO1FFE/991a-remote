@@ -4,6 +4,7 @@ import json
 import serial
 from serial import SerialException
 import websockets
+from websockets.legacy.client import Connect
 import logging
 import os
 import subprocess
@@ -29,6 +30,18 @@ def _to_ws_url(url):
     if url.startswith('https://'):
         return 'wss://' + url[len('https://'):]
     return url
+
+
+class RedirectConnect(Connect):
+    """WebSocket-Verbindung, die HTTP-Weiterleitungen interpretiert."""
+
+    def handle_redirect(self, uri: str) -> None:
+        super().handle_redirect(_to_ws_url(uri))
+
+
+def ws_connect(uri: str, **kwargs):
+    """Erstelle eine Verbindung mit Unterstuetzung fuer Redirects."""
+    return RedirectConnect(_to_ws_url(uri), **kwargs)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -299,7 +312,7 @@ async def handle_client(websocket, announce=None, send_updates=False):
 async def client_loop(uri, handshake):
     while True:
         try:
-            async with websockets.connect(_to_ws_url(uri)) as ws:
+            async with ws_connect(uri) as ws:
                 await handle_client(ws, announce=handshake, send_updates=True)
         except Exception:
             logger.exception('Connection error, retrying in 1 second')
@@ -319,7 +332,7 @@ async def audio_loop(uri, handshake, input_dev=None, output_dev=None):
                         output_device_index=output_dev)
     while True:
         try:
-            async with websockets.connect(_to_ws_url(uri)) as ws:
+            async with ws_connect(uri) as ws:
                 await ws.send(json.dumps(handshake))
 
                 async def sender():
