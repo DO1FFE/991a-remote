@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_CONNECT_URI = 'ws://991a.lima11.de/ws/rig'
+DEFAULT_CONNECT_URI = 'wss://991a.lima11.de/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
 DEFAULT_AUDIO_URI = DEFAULT_CONNECT_URI.rsplit('/', 1)[0] + '/rig_audio'
 AUDIO_RATE = 16000

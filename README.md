@@ -37,12 +37,12 @@ Administratoren besitzen automatisch alle Operatorrechte.
 
 1. Auf dem Windows‑Rechner mit angeschlossenem FT‑991A den Steuerungsdienst starten und
    eine Verbindung zum Flask‑Server aufbauen. Der TRX verbindet sich dabei immer automatisch über
-  `ws://991a.lima11.de/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
+  `wss://991a.lima11.de/ws/rig` (anpassbar mit `--server`). Melden Sie sich mit Ihren Benutzerdaten an:
  ```bash
 python trx/ft991a_ws_server.py --serial-port COM3 \
     --baudrate 9600 \
     --callsign MYCALL --username MYCALL --password secret \
-    --server ws://991a.lima11.de/ws/rig
+    --server wss://991a.lima11.de/ws/rig
 ``` 
 Bei den Parametern `--server` und `--audio-server` darf auch eine HTTP(S)-Adresse
 angegeben werden. Das Programm wandelt diese automatisch in das passende

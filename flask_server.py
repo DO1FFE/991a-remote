@@ -1149,7 +1149,7 @@ def main():
     global REMOTE_SERVER
     parser = argparse.ArgumentParser(description='FT-991A remote server')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
-                        help='Remote control server ws://host:port')
+                        help='Remote control server wss://host:port')
     parser.add_argument('--secret', default=DEFAULT_SECRET,
                         help='Flask secret key')
     parser.add_argument('--input-device', type=int, default=None,
