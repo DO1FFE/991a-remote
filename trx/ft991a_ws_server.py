@@ -241,6 +241,43 @@ async def read_memory_channels():
     return memories
 
 
+async def run_startup_tests(send_func=None):
+    """Einige einfache CAT-Befehle pruefen und Rueckmeldungen liefern."""
+    if ser is None:
+        return {}
+    # Mehrere gaengige Befehle, die sofort eine Rueckmeldung liefern
+    commands = [
+        b'FA;',  # Frequenz VFO-A
+        b'FB;',  # Frequenz VFO-B
+        b'MD;',  # Betriebsart
+        b'IF;',  # Statusinformationen
+        b'PC;',  # Ausgangsleistung
+        b'SM;',  # S-Meter
+        b'RG;',  # RF-Gain
+        b'GT;',  # AGC-Funktion
+        b'NR;',  # Noise Reduction
+        b'NB;'   # Noise Blanker
+    ]
+    results = {}
+    try:
+        async with ser_lock:
+            for cmd in commands:
+                ser.write(cmd)
+                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                key = cmd.decode('ascii').strip(';')
+                logger.info('Starttest %s -> %s', key, reply)
+                if reply:
+                    results[key] = reply
+    except Exception:
+        logger.exception('Starttests fehlgeschlagen')
+    if results and send_func is not None:
+        try:
+            await send_func(results)
+        except Exception:
+            logger.exception('Senden der Starttests fehlgeschlagen')
+    return results
+
+
 POLL_COMMANDS = load_poll_commands()
 
 async def poll_trx(send_func=None):
@@ -276,6 +313,8 @@ async def handle_client(websocket, announce=None, send_updates=False):
     if announce is not None:
         await websocket.send(json.dumps(announce))
     if ser:
+        await run_startup_tests(
+            lambda vals: websocket.send(json.dumps({'values': vals})))
         memories = await read_memory_channels()
         if memories:
             await websocket.send(json.dumps({'memory_channels': memories}))
