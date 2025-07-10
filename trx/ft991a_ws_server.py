@@ -219,7 +219,13 @@ async def read_memory_channels():
     try:
         async with ser_lock:
             for i in range(125):
-                ser.write(f'MR{i:03d};'.encode('ascii'))
+                try:
+                    ser.write(f'MR{i:03d};'.encode('ascii'))
+                except OSError:
+                    # Unter Windows kann PySerial einen OSError liefern, wenn
+                    # der Handle ungueltig wurde.
+                    logger.warning('Serial write failed during memory scan')
+                    break
                 try:
                     raw = ser.readline()
                 except (AttributeError, TypeError, SerialException):
