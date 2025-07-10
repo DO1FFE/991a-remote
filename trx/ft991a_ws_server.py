@@ -242,10 +242,9 @@ async def read_memory_channels():
 
 
 async def run_startup_tests(send_func=None):
-    """Einige einfache CAT-Befehle pruefen und Rueckmeldungen liefern."""
+    """Einige einfache CAT-Befehle pruefen und zusaetzlich Speicher testen."""
     if ser is None:
         return {}
-    # Mehrere gaengige Befehle, die sofort eine Rueckmeldung liefern
     commands = [
         b'FA;',  # Frequenz VFO-A
         b'FB;',  # Frequenz VFO-B
@@ -259,22 +258,52 @@ async def run_startup_tests(send_func=None):
         b'NB;'   # Noise Blanker
     ]
     results = {}
+    memories = []
     try:
         async with ser_lock:
             for cmd in commands:
-                ser.write(cmd)
-                reply = ser.readline().decode('ascii', errors='ignore').strip()
+                try:
+                    ser.write(cmd)
+                except (OSError, SerialException):
+                    logger.warning('Serial write failed during startup tests')
+                    break
+                try:
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
+                except (AttributeError, TypeError, SerialException):
+                    logger.warning('Serial read failed during startup tests')
+                    break
                 key = cmd.decode('ascii').strip(';')
                 logger.info('Starttest %s -> %s', key, reply)
                 if reply:
                     results[key] = reply
+            # Erste zehn Speicherkanaele pruefen
+            for i in range(10):
+                try:
+                    ser.write(f'MR{i:03d};'.encode('ascii'))
+                except (OSError, SerialException):
+                    logger.warning('Serial write failed during memory scan')
+                    break
+                try:
+                    reply = ser.readline().decode('ascii', errors='ignore').strip()
+                except (AttributeError, TypeError, SerialException):
+                    logger.warning('Serial read failed during memory scan')
+                    break
+                logger.info('Starttest MR%03d -> %s', i, reply)
+                if reply and any(ch != '0' for ch in reply):
+                    memories.append(i)
     except Exception:
         logger.exception('Starttests fehlgeschlagen')
-    if results and send_func is not None:
-        try:
-            await send_func(results)
-        except Exception:
-            logger.exception('Senden der Starttests fehlgeschlagen')
+    if send_func is not None:
+        if results:
+            try:
+                await send_func({'values': results})
+            except Exception:
+                logger.exception('Senden der Starttests fehlgeschlagen')
+        if memories:
+            try:
+                await send_func({'memory_channels': memories})
+            except Exception:
+                logger.exception('Senden der Speicherliste fehlgeschlagen')
     return results
 
 
@@ -313,8 +342,7 @@ async def handle_client(websocket, announce=None, send_updates=False):
     if announce is not None:
         await websocket.send(json.dumps(announce))
     if ser:
-        await run_startup_tests(
-            lambda vals: websocket.send(json.dumps({'values': vals})))
+        await run_startup_tests(lambda data: websocket.send(json.dumps(data)))
         memories = await read_memory_channels()
         if memories:
             await websocket.send(json.dumps({'memory_channels': memories}))
