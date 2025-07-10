@@ -14,13 +14,21 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_SERIAL_PORT = 'COM3'
 DEFAULT_BAUDRATE = 9600
-DEFAULT_CONNECT_URI = 'ws://991a.lima11.de:8084/ws/rig'
+DEFAULT_CONNECT_URI = 'ws://991a.lima11.de/ws/rig'
 DEFAULT_CALLSIGN = 'FT-991A'
 DEFAULT_AUDIO_URI = DEFAULT_CONNECT_URI.rsplit('/', 1)[0] + '/rig_audio'
 AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16 if pyaudio else 8
 CHANNELS = 1
 CHUNK = 1024
+
+def _to_ws_url(url):
+    """HTTP(S)-URL in WebSocket-URL umwandeln."""
+    if url.startswith('http://'):
+        return 'ws://' + url[len('http://'):]
+    if url.startswith('https://'):
+        return 'wss://' + url[len('https://'):]
+    return url
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -291,7 +299,7 @@ async def handle_client(websocket, announce=None, send_updates=False):
 async def client_loop(uri, handshake):
     while True:
         try:
-            async with websockets.connect(uri) as ws:
+            async with websockets.connect(_to_ws_url(uri)) as ws:
                 await handle_client(ws, announce=handshake, send_updates=True)
         except Exception:
             logger.exception('Connection error, retrying in 1 second')
@@ -311,7 +319,7 @@ async def audio_loop(uri, handshake, input_dev=None, output_dev=None):
                         output_device_index=output_dev)
     while True:
         try:
-            async with websockets.connect(uri) as ws:
+            async with websockets.connect(_to_ws_url(uri)) as ws:
                 await ws.send(json.dumps(handshake))
 
                 async def sender():
