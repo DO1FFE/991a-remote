@@ -239,7 +239,7 @@ class App:
         trx.CALLSIGN = cfg['callsign']
         try:
             baud = cfg.get('baudrate', trx.DEFAULT_BAUDRATE)
-            trx.ser = serial.Serial(cfg['serial_port'], baud, timeout=1)
+            trx.ser = trx.open_serial_autodetect(cfg['serial_port'], baud)
         except SerialException:
             self.queue.put(('users', ['Dummy-TRX aktiv']))
             trx.ser = trx.DummySerial()

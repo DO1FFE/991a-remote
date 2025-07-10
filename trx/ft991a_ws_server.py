@@ -22,6 +22,7 @@ AUDIO_RATE = 16000
 AUDIO_FORMAT = pyaudio.paInt16 if pyaudio else 8
 CHANNELS = 1
 CHUNK = 1024
+BAUDRATES = [4800, 9600, 19200, 38400, 57600, 115200]
 
 def _to_ws_url(url):
     """HTTP(S)-URL in WebSocket-URL umwandeln."""
@@ -161,6 +162,32 @@ class DummySerial:
     def close(self):
         """Kein spezieller Aufraeumvorgang notwendig."""
         pass
+
+
+def open_serial_autodetect(port, start_baud=DEFAULT_BAUDRATE):
+    """Serielle Schnittstelle mit automatischer Baudratenerkennung oeffnen.
+
+    Es wird mit der angegebenen Baudrate begonnen und bei fehlender Antwort auf
+    das CAT-Kommando ``FA;`` schrittweise die naechsthoehere Baudrate getestet.
+    """
+
+    rates = [b for b in BAUDRATES if b >= start_baud]
+    if start_baud not in rates:
+        rates.insert(0, start_baud)
+    for rate in rates:
+        try:
+            ser_obj = serial.Serial(port, rate, timeout=1)
+        except SerialException:
+            continue
+        try:
+            ser_obj.write(b'FA;')
+            if ser_obj.readline().strip():
+                logger.info('Baudrate %d erkannt', rate)
+                return ser_obj
+        except SerialException:
+            pass
+        ser_obj.close()
+    raise SerialException('Baudrate konnte nicht ermittelt werden')
 
 
 def load_poll_commands():
@@ -382,7 +409,7 @@ async def main():
     CALLSIGN = args.callsign
     ser = None
     try:
-        ser = serial.Serial(args.serial_port, args.baudrate, timeout=1)
+        ser = open_serial_autodetect(args.serial_port, args.baudrate)
     except SerialException:
         print('Hinweis: Kein TRX gefunden, Dummy wird verwendet.', flush=True)
         ser = DummySerial()

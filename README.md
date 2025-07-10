@@ -48,10 +48,8 @@ Bei den Parametern `--server` und `--audio-server` darf auch eine HTTP(S)-Adress
 angegeben werden. Das Programm wandelt diese automatisch in das passende
 WebSocket-Schema (`ws://` bzw. `wss://`) um.
 Alternativ kann `python trx/trx_gui.py` verwendet werden. Die Oberfläche
-speichert Zugangsdaten sowie Audio-, COM-Port- und Baudrate-Auswahl und startet den
-Dienst nach Klick auf **START**. In einem kleinen Fenster werden dabei nur
-die Nutzer angezeigt, die gerade diesen TRX verwenden.
- Der COM‑Port und die Baudrate sind ggf. anzupassen. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
+speichert Zugangsdaten sowie Audio-, COM-Port- und Baudrate-Auswahl und startet den Dienst nach Klick auf **START**. In einem kleinen Fenster werden dabei nur
+die Nutzer angezeigt, die gerade diesen TRX verwenden. Der COM‑Port muss gegebenenfalls angepasst werden. Die Baudrate wird automatisch erkannt, sofern das Funkgerät antwortet. Verbinden sich mehrere Stationen, wählen Sie in der Weboberfläche anhand des Rufzeichens das gewünschte Gerät aus. Jeder TRX muss daher mit einem eindeutigen Rufzeichen angemeldet werden.
 
 ### Nutzung als Operator
 
