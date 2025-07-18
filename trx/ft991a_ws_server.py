@@ -432,13 +432,17 @@ async def audio_loop(uri, handshake, input_dev=None, output_dev=None):
     if pyaudio is None:
         logger.error('pyaudio not installed, audio disabled')
         return
-    p = pyaudio.PyAudio()
-    in_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                       input=True, frames_per_buffer=CHUNK,
-                       input_device_index=input_dev)
-    out_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS, rate=AUDIO_RATE,
-                        output=True, frames_per_buffer=CHUNK,
-                        output_device_index=output_dev)
+    try:
+        p = pyaudio.PyAudio()
+        in_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS,
+                           rate=AUDIO_RATE, input=True, frames_per_buffer=CHUNK,
+                           input_device_index=input_dev)
+        out_stream = p.open(format=AUDIO_FORMAT, channels=CHANNELS,
+                            rate=AUDIO_RATE, output=True, frames_per_buffer=CHUNK,
+                            output_device_index=output_dev)
+    except Exception:
+        logger.exception('Audio initialization failed, disabling audio')
+        return
     while True:
         try:
             async with ws_connect(uri) as ws:
@@ -478,6 +482,8 @@ async def main():
                         help='Audio input device index')
     parser.add_argument('--output-device', type=int, default=None,
                         help='Audio output device index')
+    parser.add_argument('--no-audio', action='store_true',
+                        help='Audioubertragung deaktivieren')
     parser.add_argument('--username', default=None,
                         help='Username for login')
     parser.add_argument('--password', default=None,
@@ -498,8 +504,10 @@ async def main():
             handshake.update({'username': args.username,
                               'password': args.password,
                               'mode': 'trx'})
+        else:
+            logger.warning('No login credentials provided; connection may fail')
         audio_handshake = None
-        if args.username and args.password:
+        if (args.username and args.password and not args.no_audio):
             audio_handshake = {'callsign': CALLSIGN,
                                'username': args.username,
                                'password': args.password,

@@ -43,7 +43,14 @@ python trx/ft991a_ws_server.py --serial-port COM3 \
     --baudrate 9600 \
     --callsign MYCALL --username MYCALL --password secret \
     --server wss://991a.lima11.de/ws/rig
-``` 
+```
+Fehlt eine passende Soundkarte, kann die Audioubertragung mit `--no-audio`
+deaktiviert werden:
+```bash
+python trx/ft991a_ws_server.py --serial-port COM3 \
+    --callsign MYCALL --username MYCALL --password secret \
+    --no-audio --server wss://991a.lima11.de/ws/rig
+```
 Bei den Parametern `--server` und `--audio-server` darf auch eine HTTP(S)-Adresse
 angegeben werden. Das Programm wandelt diese automatisch in das passende
 WebSocket-Schema (`ws://` bzw. `wss://`) um.
