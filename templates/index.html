@@ -3,7 +3,7 @@
 {% block container_class %}radio-case ft991a{% endblock %}
 {% block header_class %}rig-header{% endblock %}
 {% block header_title %}FT-991A{% endblock %}
-{% block nav %}<nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a> | <a href="{{ url_for('show_answers') }}">CAT Antworten</a>{% endif %}</nav>{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('logout') }}">Abmelden</a>{% if role == 'admin' %} | <a href="{{ url_for('admin_users') }}">Benutzerverwaltung</a> | <a href="{{ url_for('show_answers') }}">CAT Antworten</a> | <a href="{{ url_for('show_log') }}">Log</a>{% endif %}</nav>{% endblock %}
 {% block content %}
     {% if role == 'admin' and unapproved_count %}
     <p class="warn">{{ unapproved_count }} Benutzer warten auf Freischaltung.</p>

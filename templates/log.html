@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}WebSocket Log{% endblock %}
+{% block header_title %}WebSocket Log{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('index') }}">Zurück</a> | <a href="{{ url_for('logout') }}">Abmelden</a></nav>{% endblock %}
+{% block content %}
+<h2>Letzte WebSocket Meldungen</h2>
+<pre>
+{% for line in entries %}
+{{ line }}
+{% endfor %}
+</pre>
+{% endblock %}
