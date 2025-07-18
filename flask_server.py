@@ -6,6 +6,7 @@ import os
 import re
 import websockets
 import logging
+from collections import deque
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import datetime
 import time
@@ -39,6 +40,22 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Letzte 1000 WebSocket-Nachrichten speichern
+WS_LOG = deque(maxlen=1000)
+WS_LOG_LOCK = threading.Lock()
+
+
+def log_ws(name, direction, message):
+    """WebSocket-Verkehr protokollieren."""
+    if isinstance(message, bytes):
+        msg = f'<{len(message)} Bytes>'
+    else:
+        msg = str(message)
+    entry = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{name}] {direction}: {msg}"
+    with WS_LOG_LOCK:
+        WS_LOG.append(entry)
+    logger.info('WS %s %s: %s', name, direction, msg)
 
 
 def _decode_device_name(name):
@@ -206,6 +223,7 @@ def fetch_cat_answers():
 
 def broadcast(update):
     data = json.dumps(update)
+    log_ws('status', 'send', data)
     remove = []
     with STATUS_LOCK:
         for ws in list(STATUS_CLIENTS):
@@ -229,6 +247,7 @@ def broadcast_active_users():
                 del ACTIVE_USERS[u]
                 USER_RTT.pop(u, None)
     data = json.dumps({'active_users': users})
+    log_ws('active_users', 'send', data)
     remove = []
     with ACTIVE_WS_LOCK:
         for ws in list(ACTIVE_WS_CLIENTS):
@@ -245,6 +264,7 @@ def broadcast_rig_list():
     with RIG_LOCK:
         rigs = list(RIGS.keys())
     data = json.dumps({'rigs': rigs})
+    log_ws('rig_list', 'send', data)
     remove = []
     with RIG_LIST_LOCK:
         for ws in list(RIG_LIST_CLIENTS):
@@ -287,6 +307,7 @@ load_users()
 @sock.route('/ws/rig')
 def rig(ws):
     first = ws.receive()
+    log_ws('rig', 'recv', first)
     callsign = None
     username = None
     password = None
@@ -322,6 +343,7 @@ def rig(ws):
     try:
         while True:
             msg = ws.receive()
+            log_ws(f'rig:{callsign}', 'recv', msg)
             if msg is None:
                 break
             if mode == 'trx':
@@ -341,6 +363,7 @@ def rig(ws):
                         RIG_MEMORIES[callsign] = memories
                     broadcast({'rig': callsign, 'memories': memories})
     finally:
+        log_ws(f'rig:{callsign}', 'close', '')
         if mode == 'trx':
             with RIG_LOCK:
                 if RIGS.get(callsign) is ws:
@@ -356,6 +379,7 @@ def rig(ws):
 def rig_audio(ws):
     """Audio connection from a transceiver service."""
     first = ws.receive()
+    log_ws('rig_audio', 'recv', first)
     try:
         data = json.loads(first)
         callsign = data.get('callsign')
@@ -397,6 +421,7 @@ def rig_audio(ws):
         with RIG_AUDIO_LOCK:
             if RIG_AUDIO.get(callsign) is ws:
                 del RIG_AUDIO[callsign]
+        log_ws(f'rig_audio:{callsign}', 'close', '')
 
 @app.route('/')
 def index():
@@ -822,6 +847,21 @@ def fetch_answers_route():
     save_answers(answers)
     return redirect(url_for('show_answers'))
 
+
+@app.route('/log')
+def show_log():
+    """Logdatei der WebSockets anzeigen (nur Admin)."""
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    with WS_LOG_LOCK:
+        entries = list(WS_LOG)
+    role = session.get('role')
+    return render_template('log.html', entries=entries, role=role,
+                           year=CURRENT_YEAR,
+                           program_version=PROGRAM_VERSION)
+
 @app.route('/command', methods=['POST'])
 def command():
     if not session.get('logged_in'):
@@ -1013,6 +1053,7 @@ def command():
 def audio(ws):
     rig = session.get('rig')
     rig_ws = None
+    log_ws('audio', 'connect', f'rig={rig}')
     if rig:
         with RIG_AUDIO_LOCK:
             rig_ws = RIG_AUDIO.get(rig)
@@ -1075,21 +1116,27 @@ def audio(ws):
             input_stream.close()
             output_stream.close()
             p.terminate()
+    log_ws('audio', 'close', f'rig={rig}')
 
 @sock.route('/ws/status')
 def status(ws):
     with STATUS_LOCK:
         STATUS_CLIENTS.add(ws)
+    log_ws('status', 'connect', '')
     with VALUES_LOCK:
         for rig, vals in RIG_VALUES.items():
             try:
-                ws.send(json.dumps({'rig': rig, 'values': vals}))
+                data = json.dumps({'rig': rig, 'values': vals})
+                ws.send(data)
+                log_ws('status', 'send', data)
             except Exception:
                 pass
     with MEMORY_LOCK:
         for rig, mem in RIG_MEMORIES.items():
             try:
-                ws.send(json.dumps({'rig': rig, 'memories': mem}))
+                data = json.dumps({'rig': rig, 'memories': mem})
+                ws.send(data)
+                log_ws('status', 'send', data)
             except Exception:
                 pass
     try:
@@ -1097,9 +1144,11 @@ def status(ws):
             msg = ws.receive()
             if msg is None:
                 break
+            log_ws('status', 'recv', msg)
     finally:
         with STATUS_LOCK:
             STATUS_CLIENTS.discard(ws)
+    log_ws('status', 'close', '')
 
 
 @sock.route('/ws/active_users')
@@ -1109,6 +1158,7 @@ def active_users_ws(ws):
         return
     with ACTIVE_WS_LOCK:
         ACTIVE_WS_CLIENTS.add(ws)
+    log_ws('active_users', 'connect', '')
     # send initial list
     now = time.time()
     with ACTIVE_LOCK:
@@ -1118,14 +1168,18 @@ def active_users_ws(ws):
                 with USER_RIG_LOCK:
                     users.append((u, USER_RTT.get(u), USER_RIG.get(u)))
     try:
-        ws.send(json.dumps({'active_users': users}))
+        data = json.dumps({'active_users': users})
+        ws.send(data)
+        log_ws('active_users', 'send', data)
         while True:
             msg = ws.receive()
             if msg is None:
                 break
+            log_ws('active_users', 'recv', msg)
     finally:
         with ACTIVE_WS_LOCK:
             ACTIVE_WS_CLIENTS.discard(ws)
+    log_ws('active_users', 'close', '')
 
 
 @sock.route('/ws/rig_list')
@@ -1133,17 +1187,22 @@ def rig_list_ws(ws):
     """Sende laufend die Liste verbundener TRX."""
     with RIG_LIST_LOCK:
         RIG_LIST_CLIENTS.add(ws)
+    log_ws('rig_list', 'connect', '')
     with RIG_LOCK:
         rigs = list(RIGS.keys())
     try:
-        ws.send(json.dumps({'rigs': rigs}))
+        data = json.dumps({'rigs': rigs})
+        ws.send(data)
+        log_ws('rig_list', 'send', data)
         while True:
             msg = ws.receive()
             if msg is None:
                 break
+            log_ws('rig_list', 'recv', msg)
     finally:
         with RIG_LIST_LOCK:
             RIG_LIST_CLIENTS.discard(ws)
+    log_ws('rig_list', 'close', '')
 
 def main():
     global REMOTE_SERVER
