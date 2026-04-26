@@ -23,6 +23,21 @@ AUDIO_FORMAT = pyaudio.paInt16 if pyaudio else 8
 CHANNELS = 1
 CHUNK = 1024
 BAUDRATES = [4800, 9600, 19200, 38400, 57600, 115200]
+ERLAUBTE_MODE_CODES = {f'{code:02X}' for code in range(0x01, 0x0F)}
+
+
+def normalize_mode_code(value):
+    """Mode-Eingabe in zweistelligen CAT-Code (01..0E) normalisieren."""
+    normalized = str(value).strip().upper()
+    if normalized in ERLAUBTE_MODE_CODES:
+        return normalized
+    try:
+        mode_num = int(normalized, 16)
+    except ValueError:
+        return None
+    if 0x01 <= mode_num <= 0x0E:
+        return f'{mode_num:02X}'
+    return None
 
 def _to_ws_url(url):
     """HTTP(S)-URL in WebSocket-URL umwandeln."""
@@ -92,14 +107,14 @@ class DummySerial:
 
     def __init__(self):
         self.frequency = 7100000  # 7.100 MHz als Startfrequenz
-        self.mode = 1             # LSB
+        self.mode_code = '01'     # LSB
         self.ptt = False
         self._responses = []
         # Einige vordefinierte Speicherkanaele
         self.memories = {
-            0: (145500000, 4),  # 145.500 MHz FM
-            1: (7100000, 1),    # 7.100 MHz LSB
-            2: (144800000, 2),  # 144.800 MHz USB
+            0: (145500000, '04'),  # 145.500 MHz FM
+            1: (7100000, '01'),    # 7.100 MHz LSB
+            2: (144800000, '02'),  # 144.800 MHz USB
         }
 
     def write(self, data):
@@ -119,12 +134,11 @@ class DummySerial:
                         pass
             elif cmd.startswith('MD'):
                 if len(cmd) == 2:
-                    self._responses.append(f'{self.mode:02d};'.encode('ascii'))
+                    self._responses.append(f'MD{self.mode_code};'.encode('ascii'))
                 else:
-                    try:
-                        self.mode = int(cmd[2:])
-                    except ValueError:
-                        pass
+                    mode_code = normalize_mode_code(cmd[2:])
+                    if mode_code is not None:
+                        self.mode_code = mode_code
             elif cmd == 'SM':
                 self._responses.append(b'0050;')
             elif cmd.startswith('MR'):
@@ -133,16 +147,16 @@ class DummySerial:
                 except ValueError:
                     idx = None
                 if idx is not None and idx in self.memories:
-                    freq, mode = self.memories[idx]
+                    freq, mode_code = self.memories[idx]
                     self._responses.append(
-                        f'FA{freq:011d};MD{mode:02d};'.encode('ascii'))
+                        f'FA{freq:011d};MD{mode_code};'.encode('ascii'))
                 else:
                     self._responses.append(b'0')  # Speicher leer
             elif cmd.startswith('MC'):
                 try:
                     idx = int(cmd[2:5])
                     if idx in self.memories:
-                        self.frequency, self.mode = self.memories[idx]
+                        self.frequency, self.mode_code = self.memories[idx]
                 except ValueError:
                     pass
             elif cmd == 'TX':
@@ -376,11 +390,9 @@ async def handle_client(websocket, announce=None, send_updates=False):
                     except (KeyError, ValueError):
                         pass
                 elif cmd == 'set_mode':
-                    try:
-                        mode = int(data['mode'])
-                        ser.write(f'MD{mode:02d};'.encode('ascii'))
-                    except (KeyError, ValueError):
-                        pass
+                    mode_code = normalize_mode_code(data.get('mode'))
+                    if mode_code is not None:
+                        ser.write(f'MD{mode_code};'.encode('ascii'))
                 elif cmd == 'ptt_on':
                     ser.write(b'TX;')
                 elif cmd == 'ptt_off':
