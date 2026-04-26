@@ -142,8 +142,7 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 app = Flask(__name__, template_folder=TEMPLATES_DIR,
             static_folder=STATIC_DIR)
-DEFAULT_SECRET = 'change-me'
-app.secret_key = DEFAULT_SECRET
+app.secret_key = None
 CURRENT_YEAR = datetime.datetime.now().year
 EU_BERLIN = ZoneInfo('Europe/Berlin')
 
@@ -1245,8 +1244,8 @@ def main():
     parser = argparse.ArgumentParser(description='FT-991A remote server')
     parser.add_argument('--server', default=DEFAULT_REMOTE_SERVER,
                         help='Remote control server wss://host:port')
-    parser.add_argument('--secret', default=DEFAULT_SECRET,
-                        help='Flask secret key')
+    parser.add_argument('--secret', default=None,
+                        help='Flask secret key (alternativ via FLASK_SECRET_KEY)')
     parser.add_argument('--input-device', type=int, default=None,
                         help='Audio input device index')
     parser.add_argument('--output-device', type=int, default=None,
@@ -1254,8 +1253,6 @@ def main():
     parser.add_argument('--list-devices', action='store_true',
                         help='List audio devices and exit')
     args = parser.parse_args()
-
-    app.secret_key = args.secret
     global INPUT_DEVICE_INDEX, OUTPUT_DEVICE_INDEX
     INPUT_DEVICE_INDEX = args.input_device
     OUTPUT_DEVICE_INDEX = args.output_device
@@ -1279,6 +1276,16 @@ def main():
                     print(f"  {i}: {name}")
             p.terminate()
         return
+
+    # Zweck: Secret sicher aus CLI oder Umgebung laden und unsicheren Start verhindern.
+    # Nutzung: --secret hat Vorrang, ansonsten FLASK_SECRET_KEY setzen.
+    configured_secret = args.secret or os.environ.get('FLASK_SECRET_KEY')
+    if not configured_secret:
+        raise SystemExit(
+            'Fehler: Kein Flask-Secret gesetzt. Bitte --secret angeben '
+            'oder die Umgebungsvariable FLASK_SECRET_KEY setzen.'
+        )
+    app.secret_key = configured_secret
 
     REMOTE_SERVER = args.server
     # The web interface always runs on port 8084
