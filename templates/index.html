@@ -366,6 +366,7 @@
 {% block scripts %}
 <script>
 const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const currentUser = '{{ user }}';
 let isOperator = {{ 'true' if operator==user else 'false' }};
 let sock;
@@ -574,9 +575,20 @@ function stopRigList(){
     if(rigListSock){ rigListSock.close(); rigListSock=null; }
 }
 document.querySelectorAll('.cmdForm').forEach(f => {
+    if(!f.querySelector('input[name="csrf_token"]')){
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken;
+        f.appendChild(csrfInput);
+    }
     f.addEventListener('submit', e => {
         e.preventDefault();
-        fetch(f.action, {method:'POST', body:new FormData(f)})
+        fetch(f.action, {
+            method:'POST',
+            body:new FormData(f),
+            headers:{'X-CSRF-Token': csrfToken}
+        })
             .then(r => {
                 if(r.redirected){
                     window.location.href = r.url;
@@ -590,7 +602,12 @@ document.querySelectorAll('.cmdForm').forEach(f => {
 function sendPTT(on){
     const fd = new FormData();
     fd.append('cmd', on ? 'ptt_on' : 'ptt_off');
-    fetch('{{ url_for('command') }}', {method: 'POST', body: fd});
+    fd.append('csrf_token', csrfToken);
+    fetch('{{ url_for('command') }}', {
+        method: 'POST',
+        body: fd,
+        headers:{'X-CSRF-Token': csrfToken}
+    });
 }
 function startPTT(){
     if(!startPTT.active){
@@ -626,7 +643,7 @@ async function ping(){
         await fetch('{{ url_for('heartbeat') }}', {
             method:'POST',
             credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},
+            headers:{'Content-Type':'application/json','X-CSRF-Token': csrfToken},
             body: JSON.stringify({rtt:lastRtt})
         });
         lastRtt = Math.round(performance.now() - start);
@@ -665,7 +682,12 @@ async function ping(){
             rigSel.onchange = () => {
                 const fd = new FormData();
                 fd.append('rig', rigSel.value);
-                fetch('{{ url_for('select_rig') }}', {method:'POST', body: fd}).then(() => ping());
+                fd.append('csrf_token', csrfToken);
+                fetch('{{ url_for('select_rig') }}', {
+                    method:'POST',
+                    body: fd,
+                    headers:{'X-CSRF-Token': csrfToken}
+                }).then(() => ping());
             };
         }
         const memSel = document.querySelector('#memory-select select[name="value"]');
@@ -713,7 +735,12 @@ if(rigSelectInit){
     rigSelectInit.onchange = () => {
         const fd = new FormData();
         fd.append('rig', rigSelectInit.value);
-        fetch('{{ url_for('select_rig') }}', {method:'POST', body: fd}).then(() => ping());
+        fd.append('csrf_token', csrfToken);
+        fetch('{{ url_for('select_rig') }}', {
+            method:'POST',
+            body: fd,
+            headers:{'X-CSRF-Token': csrfToken}
+        }).then(() => ping());
     };
 }
 </script>
