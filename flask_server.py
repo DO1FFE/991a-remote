@@ -105,6 +105,7 @@ AUDIO_CLIENTS = {}
 AUDIO_CLIENTS_LOCK = threading.Lock()
 RIG_LIST_CLIENTS = set()
 RIG_LIST_LOCK = threading.Lock()
+ERLAUBTE_MODE_CODES = {f'{code:02X}' for code in range(0x01, 0x0F)}
 
 GERMAN_PREFIXES = (
     'DA', 'DB', 'DC', 'DD', 'DF', 'DG', 'DH', 'DJ',
@@ -121,6 +122,20 @@ def is_valid_callsign(callsign):
 def has_operator_rights():
     """True, wenn der angemeldete Nutzer einen TRX bedienen darf."""
     return session.get('role') == 'admin' or session.get('approved')
+
+
+def normalize_mode_code(value):
+    """Mode-Eingabe in zweistelligen CAT-Code (01..0E) normalisieren."""
+    normalized = (value or '').strip().upper()
+    if normalized in ERLAUBTE_MODE_CODES:
+        return normalized
+    try:
+        mode_num = int(normalized, 16)
+    except ValueError:
+        return None
+    if 0x01 <= mode_num <= 0x0E:
+        return f'{mode_num:02X}'
+    return None
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -885,11 +900,10 @@ def command():
             except ValueError:
                 return ('', 204)
         elif cmd == 'mode':
-            try:
-                mode = int(value)
-                data = {'command': 'set_mode', 'mode': mode}
-            except ValueError:
-                return ('', 204)
+            mode = normalize_mode_code(value)
+            if mode is None:
+                return ('Ungültiger Moduscode. Erlaubt sind 01 bis 0E.', 400)
+            data = {'command': 'set_mode', 'mode': mode}
         elif cmd == 'ptt_on':
             data = {'command': 'ptt_on'}
         elif cmd == 'ptt_off':
@@ -976,11 +990,10 @@ def command():
             except ValueError:
                 return ('', 204)
         elif cmd == 'mode':
-            try:
-                mode = int(value)
-                data = {'command': 'set_mode', 'mode': mode}
-            except ValueError:
-                return ('', 204)
+            mode = normalize_mode_code(value)
+            if mode is None:
+                return ('Ungültiger Moduscode. Erlaubt sind 01 bis 0E.', 400)
+            data = {'command': 'set_mode', 'mode': mode}
         elif cmd == 'ptt_on':
             data = {'command': 'ptt_on'}
         elif cmd == 'ptt_off':
