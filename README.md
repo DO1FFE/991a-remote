@@ -66,9 +66,15 @@ Funkgeräts selbst und wird daher immer im TRX-Modus betrieben.
 
 ### Flask‑Server auf dem Client (Linux)
 
-1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server nutzt standardmäßig keine serielle Schnittstelle, sondern wartet auf eingehende WebSocket‑Verbindungen des Steuerungsdienstes:
+1. Auf dem Linux‑Rechner die Weboberfläche starten. Der Server nutzt standardmäßig keine serielle Schnittstelle, sondern wartet auf eingehende WebSocket‑Verbindungen des Steuerungsdienstes.
+   **Wichtig:** Das Flask‑Secret ist Pflicht und muss über `--secret` oder die Umgebungsvariable `FLASK_SECRET_KEY` gesetzt werden:
    ```bash
+   export FLASK_SECRET_KEY='bitte-ein-langes-zufaelliges-secret'
    python flask_server.py
+   ```
+   Alternativ direkt per Argument:
+   ```bash
+   python flask_server.py --secret 'bitte-ein-langes-zufaelliges-secret'
    ```
    Mit dem Parameter `--server` kann optional ein externer Dienst angesprochen werden. Die Anwendung läuft immer auf Port 8084.
    Beim ersten Start existiert lediglich der Benutzer `admin` mit dem Passwort `admin`. Dieses Konto muss sich nach dem Login umbenennen und ein neues Passwort vergeben.
