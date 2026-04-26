@@ -4,6 +4,7 @@
 {% block content %}
     {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label>Rufzeichen: <input type="text" name="username"></label><br>
         <label>Passwort: <input type="password" name="password"></label><br>
         <button type="submit">Registrieren</button>

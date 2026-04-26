@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import re
+import secrets
 import websockets
 import logging
 from enum import Enum
@@ -125,6 +126,26 @@ def has_operator_rights():
     return session.get('role') == 'admin' or session.get('approved')
 
 
+def get_csrf_token():
+    """CSRF-Token pro Sitzung erzeugen und zurückgeben."""
+    token = session.get('csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['csrf_token'] = token
+    return token
+
+
+def is_valid_csrf():
+    """CSRF-Token aus Formular oder Header gegen Session prüfen."""
+    expected = session.get('csrf_token')
+    if not expected:
+        return False
+    provided = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+    if not provided:
+        return False
+    return secrets.compare_digest(provided, expected)
+
+
 def normalize_mode_code(value):
     """Mode-Eingabe in zweistelligen CAT-Code (01..0E) normalisieren."""
     normalized = (value or '').strip().upper()
@@ -161,6 +182,19 @@ GITHUB_VERSION = _get_github_version()
 PROGRAM_VERSION = f'FT-991A-Remote V0.1.{GITHUB_VERSION}'
 
 sock = Sock(app)
+
+
+@app.context_processor
+def inject_csrf_token():
+    """CSRF-Token in allen Templates bereitstellen."""
+    return {'csrf_token': get_csrf_token()}
+
+
+@app.before_request
+def enforce_csrf_protection():
+    """Alle POST-Requests ohne gültiges CSRF-Token mit 403 ablehnen."""
+    if request.method == 'POST' and not is_valid_csrf():
+        return ('CSRF-Token ungültig oder fehlt.', 403)
 
 
 def load_answer_commands():
