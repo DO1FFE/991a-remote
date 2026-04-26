@@ -1061,12 +1061,26 @@ def command():
         else:
             return ('', 204)
 
-        with RIG_LOCK:
+        try:
             ws.send(json.dumps(data))
-            if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
+        except Exception:
+            logger.exception('Senden an TRX fehlgeschlagen')
+            with RIG_LOCK:
+                if RIGS.get(rig) is ws:
+                    RIGS.pop(rig, None)
+            return ('Kein TRX verbunden', 200)
+
+        if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
+            try:
                 resp = ws.receive()
-                if resp:
-                    return resp
+            except Exception:
+                logger.exception('Empfang vom TRX fehlgeschlagen')
+                with RIG_LOCK:
+                    if RIGS.get(rig) is ws:
+                        RIGS.pop(rig, None)
+                return ('Kein TRX verbunden', 200)
+            if resp:
+                return resp
     else:
         return ('Kein TRX verbunden', 200)
     return ('', 204)
