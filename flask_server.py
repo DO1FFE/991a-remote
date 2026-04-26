@@ -6,6 +6,7 @@ import os
 import re
 import websockets
 import logging
+from enum import Enum
 from collections import deque
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import datetime
@@ -892,6 +893,12 @@ def command():
     cmd = request.form.get('cmd')
     value = request.form.get('value', '')
     if REMOTE_SERVER:
+        class RemoteSendStatus(Enum):
+            """Statuswerte fuer das Senden eines Remote-Kommandos."""
+            SENT_NO_RESPONSE = 'sent_no_response'
+            RESPONSE_RECEIVED = 'response_received'
+            ERROR = 'error'
+
         data = {'command': None}
         if cmd == 'frequency':
             try:
@@ -967,14 +974,16 @@ def command():
                 async with websockets.connect(REMOTE_SERVER) as ws:
                     await ws.send(json.dumps(data))
                     if cmd in ('get_frequency', 'get_mode', 'get_smeter'):
-                        return await ws.recv()
+                        return (RemoteSendStatus.RESPONSE_RECEIVED, await ws.recv())
+                    return (RemoteSendStatus.SENT_NO_RESPONSE, None)
             except Exception:
                 logger.exception('Remote command failed')
-                return None
-            return None
-        resp = asyncio.run(send())
-        if resp is not None:
+                return (RemoteSendStatus.ERROR, None)
+        status, resp = asyncio.run(send())
+        if status == RemoteSendStatus.RESPONSE_RECEIVED:
             return resp
+        if status == RemoteSendStatus.SENT_NO_RESPONSE:
+            return ('', 204)
         return ('Kein TRX verbunden', 200)
     elif RIGS:
         rig = session.get('rig')
