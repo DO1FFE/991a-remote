@@ -6,7 +6,10 @@ import threading
 import asyncio
 from queue import Queue, Empty
 import serial.tools.list_ports
-import pyaudio
+try:
+    import pyaudio
+except ImportError:  # pragma: no cover - optionale Abhaengigkeit
+    pyaudio = None
 import websockets
 from serial import SerialException
 import datetime
@@ -123,35 +126,57 @@ class App:
         output_row = row
         row += 1
 
-        # Audio-Geraetelisten getrennt nach Input und Output erstellen
-        p = pyaudio.PyAudio()
+        self.audio_verfuegbar = pyaudio is not None
+        self.audio_platzhalter = 'kein Audio verfuegbar'
         input_devices = []
         output_devices = []
-        for i in range(p.get_device_count()):
-            info = p.get_device_info_by_index(i)
-            name = _decode_device_name(info['name'])
-            entry = f"{i}: {name}"
-            if info.get('maxInputChannels', 0) > 0:
-                input_devices.append(entry)
-            if info.get('maxOutputChannels', 0) > 0:
-                output_devices.append(entry)
-        p.terminate()
+        if self.audio_verfuegbar:
+            # Audio-Geraetelisten getrennt nach Input und Output erstellen
+            p = pyaudio.PyAudio()
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                name = _decode_device_name(info['name'])
+                entry = f"{i}: {name}"
+                if info.get('maxInputChannels', 0) > 0:
+                    input_devices.append(entry)
+                if info.get('maxOutputChannels', 0) > 0:
+                    output_devices.append(entry)
+            p.terminate()
+        else:
+            input_devices = [self.audio_platzhalter]
+            output_devices = [self.audio_platzhalter]
 
         input_width = max((len(d) for d in input_devices), default=40)
         self.input_combo = ttk.Combobox(frame, values=input_devices, width=input_width)
         self.input_combo.grid(row=input_row, column=1, sticky='w')
-        for pos, dev in enumerate(input_devices):
-            if int(dev.split(':')[0]) == self.in_var.get():
-                self.input_combo.current(pos)
-                break
+        if self.audio_verfuegbar:
+            for pos, dev in enumerate(input_devices):
+                if int(dev.split(':')[0]) == self.in_var.get():
+                    self.input_combo.current(pos)
+                    break
+        else:
+            self.input_combo.current(0)
+            self.input_combo.config(state='disabled')
 
         output_width = max((len(d) for d in output_devices), default=40)
         self.output_combo = ttk.Combobox(frame, values=output_devices, width=output_width)
         self.output_combo.grid(row=output_row, column=1, sticky='w')
-        for pos, dev in enumerate(output_devices):
-            if int(dev.split(':')[0]) == self.out_var.get():
-                self.output_combo.current(pos)
-                break
+        if self.audio_verfuegbar:
+            for pos, dev in enumerate(output_devices):
+                if int(dev.split(':')[0]) == self.out_var.get():
+                    self.output_combo.current(pos)
+                    break
+        else:
+            self.output_combo.current(0)
+            self.output_combo.config(state='disabled')
+
+        if not self.audio_verfuegbar:
+            ttk.Label(
+                frame,
+                text='Audiounterstuetzung fehlt. Installation: pip install pyaudio',
+                foreground='darkorange'
+            ).grid(row=row, column=0, columnspan=2, sticky='w', pady=(2, 4))
+            row += 1
 
         self.start_btn = ttk.Button(frame, text='Remote starten', command=self.start)
         self.start_btn.grid(row=row, column=0, columnspan=2, pady=5)
@@ -172,6 +197,8 @@ class App:
         self.validate()
 
     def validate(self, *_):
+        audio_gueltig = self.audio_verfuegbar and self.input_combo.get() and self.output_combo.get()
+        audio_optional = not self.audio_verfuegbar
         valid = all([
             self.server_var.get().strip(),
             self.callsign_var.get().strip(),
@@ -179,14 +206,15 @@ class App:
             self.pw_var.get(),
             self.port_var.get().strip(),
             self.baud_combo.get(),
-            self.input_combo.get(),
-            self.output_combo.get(),
+            audio_gueltig or audio_optional,
         ])
         state = 'normal' if valid and not self.ws_thread else 'disabled'
         self.start_btn.config(state=state)
         self.root.after(500, self.validate)
 
     def start(self):
+        input_device = self._extract_device_index(self.input_combo.get())
+        output_device = self._extract_device_index(self.output_combo.get())
         cfg = {
             'server': self.server_var.get().strip(),
             'callsign': self.callsign_var.get().strip(),
@@ -194,14 +222,23 @@ class App:
             'password': self.pw_var.get(),
             'serial_port': self.port_var.get().strip(),
             'baudrate': int(self.baud_combo.get()),
-            'input_device': int(self.input_combo.get().split(':')[0]),
-            'output_device': int(self.output_combo.get().split(':')[0]),
+            'input_device': input_device,
+            'output_device': output_device,
         }
         save_config(cfg)
         self.stop_event.clear()
         self.ws_thread = threading.Thread(target=self.run_async, args=(cfg,), daemon=True)
         self.ws_thread.start()
         self.poll_queue()
+
+    def _extract_device_index(self, device_entry):
+        """Audio-Geraeteindex aus Combobox-Wert extrahieren."""
+        if not device_entry or ':' not in device_entry:
+            return None
+        try:
+            return int(device_entry.split(':')[0])
+        except (TypeError, ValueError):
+            return None
 
     def stop(self):
         if not messagebox.askyesno('Remote beenden',
